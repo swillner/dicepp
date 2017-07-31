@@ -1,0 +1,160 @@
+parameters:
+  dK: 0.1 # Depreciation rate on capital (per year)
+  elasmu: 1.45 # Elasticity of marginal utility of consumption
+  expcost2: 2.8 # Exponent of control cost function
+  fosslim: 6000 # Maximum cumulative extraction fossil fuels (GtC)
+  gamma: 0.3 # Capital elasticity in production function
+  prstp: 0.015 # Initial rate of social time preference per year
+  scale1: 0.016408662 # Multiplicative scaling coefficient
+  scale2: -3855.106895 # Additive scaling coefficient
+  start_year: 2010
+  timestep_length: 1 # 5
+  timestep_num: 100 # 91 # 19
+
+regions:
+  - economy:
+      A0: 3.8 # Initial level of total factor productivity
+      C_lower: 2
+      C_pc_lower: 0.01
+      cca0: 90
+      E0: 33.61 # Industrial emissions 2010 (GtCO2 per year)
+      E_land0: 3.3 # Carbon emissions from land 2010 (GtCO2 per year)
+      K0: 135 # Initial capital value (trill 2005 USD)
+      K_lower: 1
+      L0: 6838 # Initial population (millions)
+      Q0: 63.69 # Initial gross output (trill 2005 USD)
+      cprice0: 1.0 # Initial base carbon price (2005$ per tCO2)
+      dA: 0.006 # Decline rate of TFP per 5 years
+      dE_land: 0.2 # Decline rate of land emissions (per 5 years)
+      dsig: -0.001 # Decline rate of decarbonization (per period)
+      gA0: 0.0158 # Initial growth rate for TFP per year
+      gback: 0.025 # Initial cost decline backstop cost 5 years
+      gcprice: 0.02 # Growth rate of base carbon price per year
+      gsigma1: -0.01 # Initial growth of sigma (per year)
+      lim_mu: 1.2 # Upper limit on control rate after 2150
+      mu0: 0.039 # Initial emissions control rate for base case 2010
+      partfract2010: 1 # Fraction of emissions under control in 2010
+      partfractfull: 1 # Fraction of emissions under control at full time
+      pback: 344 # Cost of backstop 2005$ per tCO2 2010
+      periodfullpart: 101 # Period at which have full participation
+      pop_adj: 0.134 # Growth rate to calibrate to 2050 pop projection
+      pop_asym: 10500 # Asymptotic population (millions)
+      tnopol: 221 # Period before which no emissions controls base
+
+climate:
+  type: dice
+  parameters:
+    b12: 0.01810 # Carbon cycle transition matrix
+    b23: 0.00071 # Carbon cycle transition matrix
+    M_atm0: 830.4 # Initial Concentration in atmosphere 2010 (GtC)
+    M_atm_lower: 10
+    M_atm_eq: 588 # Equilibrium concentration atmosphere  (GtC)
+    M_u0: 1527 # Initial Concentration in upper strata 2010 (GtC)
+    M_u_lower: 100
+    M_u_eq: 1350 # Equilibrium concentration in upper strata (GtC)
+    M_l0: 10010 # Initial Concentration in lower strata 2010 (GtC)
+    M_l_lower: 1000
+    M_l_eq: 10000 # Equilibrium concentration in lower strata (GtC)
+    t2xco2: 2.9 # Equilibrium temp impact (oC per doubling CO2)
+    fex0: 0.25 # 2010 forcings of non-CO2 GHG (Wm-2)
+    fex1: 0.7 # 2100 forcings of non-CO2 GHG (Wm-2)
+    T_ocean0: 0.0068 # Initial lower stratum temp change (C from 1900)
+    T_ocean_lower: -1
+    T_ocean_upper: 20
+    T_atm0: 0.8 # Initial atmospheric temp change (C from 1900)
+    T_atm_upper: 40
+    c1: 0.0222 # Climate equation coefficient for upper level
+    c3: 0.09175 # Transfer coefficient upper to lower stratum
+    c4: 0.00487 # Transfer coefficient for lower level
+    fco22x: 3.8 # Forcings of equilibrium CO2 doubling (Wm-2)
+
+damage:
+  type: dice
+  parameters:
+    a1: 0 # Damage intercept
+    a2: 0.00267 # Damage quadratic term
+    a3: 2 # Damage exponent
+
+damage_burke:
+  type: burke
+  parameters:
+    impact1: 0.0135 # Multiplicative coefficient for linear temperature impact
+    impact2: -0.0005 # Multiplicative coefficient for linear temperature impact
+    Tav: 14.34 # global mean temperature average from 1980 to 2010
+    T2010: 14.57 # global mean temperature in 2010 (average of the last five years)
+    T2009: 14.54 # global mean temperature in 2009 (average of the last five years)
+
+_output:
+  type: netcdf
+  filename: output/output.nc
+
+output:
+  type: csv
+  filename: output/output.csv
+  columns:
+    - t
+    - year
+    - Y_gross
+    - Y_net
+    - Y
+    - mu
+    - forc
+    - T_atm
+    - T_ocean
+    - M_atm
+    - M_u
+    - M_l
+    - E
+    - E_ind
+    - C
+    - K
+    - I
+    - s
+    - ri
+    - damages
+    - damfrac
+    - abatecost
+    - cca
+    - periodu
+
+control_bau:
+  s:
+    format: csv
+    filename: examples/original_results_bau.csv
+    column: 17
+
+control:
+  s:
+    format: csv
+    filename: /home/sven/Downloads/DiceResults_2013_1year.csv
+    column: 17
+
+_control:
+  mu:
+    format: csv
+    filename: examples/original_results.csv
+    column: 5
+  s:
+    format: csv
+    filename: examples/original_results.csv
+    column: 17
+
+optimization:
+  #library: nlopt
+  #library: pagmo
+  s_fix_steps: 10
+  _iterations:
+    - library: nlopt
+      algorithm: direct
+      timeout: 30
+      maxiter: 100000
+      utility_precision: 1
+      iterations: 10
+      limit_cca: true
+    - library: nlopt
+      algorithm: cobyla
+      timeout: 30
+      maxiter: 100000
+      utility_precision: 0.01
+      iterations: 10
+      limit_cca: true
