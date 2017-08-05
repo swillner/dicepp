@@ -9,53 +9,59 @@
 namespace dice {
 namespace climate {
 
-template<typename Value, typename Time>
-class DICEClimate : public Climate<Value, Time> {
+template<typename Value, typename Time, typename Constant = Value, typename Variable = TimeSeries<Value>>
+class DICEClimate : public Climate<Value, Time, Constant, Variable> {
   protected:
-    using Climate<Value, Time>::global;
-    using Climate<Value, Time>::E;  // Total CO2 emissions (GtCO2 per year)
+    using Climate<Value, Time, Constant, Variable>::global;
+    using Climate<Value, Time, Constant, Variable>::control;
+    using Climate<Value, Time, Constant, Variable>::E;  // Total CO2 emissions (GtCO2 per year)
     const settings::SettingsNode& settings;
 
-    const Value b12{settings["b12"].as<Value>()};            // Carbon cycle transition matrix
-    const Value b23{settings["b23"].as<Value>()};            // Carbon cycle transition matrix
-    const Value c1{settings["c1"].as<Value>()};              // Climate equation coefficient for upper level
-    const Value c3{settings["c3"].as<Value>()};              // Transfer coefficient upper to lower stratum
-    const Value c4{settings["c4"].as<Value>()};              // Transfer coefficient for lower level
-    const Value fco22x{settings["fco22x"].as<Value>()};      // Forcings of equilibrium CO2 doubling (Wm-2)
-    const Value fex0{settings["fex0"].as<Value>()};          // 2010 forcings of non-CO2 GHG (Wm-2)
-    const Value fex1{settings["fex1"].as<Value>()};          // 2100 forcings of non-CO2 GHG (Wm-2)
-    const Value M_atm_eq{settings["M_atm_eq"].as<Value>()};  // Equilibrium concentration atmosphere  (GtC)
-    const Value M_l_eq{settings["M_l_eq"].as<Value>()};      // Equilibrium concentration in lower strata (GtC)
-    const Value M_u_eq{settings["M_u_eq"].as<Value>()};      // Equilibrium concentration in upper strata (GtC)
-    const Value t2xco2{settings["t2xco2"].as<Value>()};      // Equilibrium temp impact (oC per doubling CO2)
-    const Value T_atm_upper{settings["T_atm_upper"].as<Value>()};
+    const Constant b12{settings["b12"].as<Constant>()};            // Carbon cycle transition matrix
+    const Constant b23{settings["b23"].as<Constant>()};            // Carbon cycle transition matrix
+    const Constant c1{settings["c1"].as<Constant>()};              // Climate equation coefficient for upper level
+    const Constant c3{settings["c3"].as<Constant>()};              // Transfer coefficient upper to lower stratum
+    const Constant c4{settings["c4"].as<Constant>()};              // Transfer coefficient for lower level
+    const Constant fco22x{settings["fco22x"].as<Constant>()};      // Forcings of equilibrium CO2 doubling (Wm-2)
+    const Constant fex0{settings["fex0"].as<Constant>()};          // 2010 forcings of non-CO2 GHG (Wm-2)
+    const Constant fex1{settings["fex1"].as<Constant>()};          // 2100 forcings of non-CO2 GHG (Wm-2)
+    const Constant M_atm_eq{settings["M_atm_eq"].as<Constant>()};  // Equilibrium concentration atmosphere  (GtC)
+    const Constant M_l_eq{settings["M_l_eq"].as<Constant>()};      // Equilibrium concentration in lower strata (GtC)
+    const Constant M_u_eq{settings["M_u_eq"].as<Constant>()};      // Equilibrium concentration in upper strata (GtC)
+    const Constant t2xco2{settings["t2xco2"].as<Constant>()};      // Equilibrium temp impact (oC per doubling CO2)
+    const Value T_atm_upper{control.variables_num, settings["T_atm_upper"].as<Constant>()};
 
     // Carbon cycle transition matrix
-    const Value b11 = 1 - b12;
-    const Value b21 = b12 * M_atm_eq / M_u_eq;
-    const Value b22 = 1 - b21 - b23;
-    const Value b32 = b23 * M_u_eq / M_l_eq;
-    const Value b33 = 1 - b32;
+    Constant b11 = 1 - b12;
+    Constant b21 = b12 * M_atm_eq / M_u_eq;
+    Constant b22 = 1 - b21 - b23;
+    Constant b32 = b23 * M_u_eq / M_l_eq;
+    Constant b33 = 1 - b32;
 
-    StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> M_atm_series{global.timestep_num,
-                                                                              {settings["M_atm0"].as<Value>(), settings["M_atm_lower"].as<Value>()}};
-    StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> M_l_series{global.timestep_num,
-                                                                            {settings["M_l0"].as<Value>(), settings["M_l_lower"].as<Value>()}};
-    StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> M_u_series{global.timestep_num,
-                                                                            {settings["M_u0"].as<Value>(), settings["M_u_lower"].as<Value>()}};
-    StepwiseBackwardLookingTimeSeries<Bounded<Value>, Time> T_ocean_series{
-        global.timestep_num, {settings["T_ocean0"].as<Value>(), settings["T_ocean_lower"].as<Value>(), settings["T_ocean_upper"].as<Value>()}};
-    StepwiseBackwardLookingTimeSeries<Value, Time> T_atm_series{global.timestep_num, settings["T_atm0"].as<Value>()};
+    StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> M_atm_series{
+        global.timestep_num, {{control.variables_num, settings["M_atm0"].as<Constant>()}, {control.variables_num, settings["M_atm_lower"].as<Constant>()}}};
+    StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> M_l_series{
+        global.timestep_num, {{control.variables_num, settings["M_l0"].as<Constant>()}, {control.variables_num, settings["M_l_lower"].as<Constant>()}}};
+    StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> M_u_series{
+        global.timestep_num, {{control.variables_num, settings["M_u0"].as<Constant>()}, {control.variables_num, settings["M_u_lower"].as<Constant>()}}};
+    StepwiseBackwardLookingTimeSeries<Bounded<Value>, Time> T_ocean_series{global.timestep_num,
+                                                                           {{control.variables_num, settings["T_ocean0"].as<Constant>()},
+                                                                            {control.variables_num, settings["T_ocean_lower"].as<Constant>()},
+                                                                            {control.variables_num, settings["T_ocean_upper"].as<Constant>()}}};
+    StepwiseBackwardLookingTimeSeries<Value, Time> T_atm_series{global.timestep_num, {control.variables_num, settings["T_atm0"].as<Constant>()}};
 
   public:
-    DICEClimate(const settings::SettingsNode& settings_p, const Global<Value, Time>& global_p, Emissions<Value, Time>& E_p)
-        : Climate<Value, Time>(global_p, E_p), settings(settings_p){};
+    DICEClimate(const settings::SettingsNode& settings_p,
+                const Global<Constant, Time>& global_p,
+                const Control<Value, Time, Constant, Variable>& control_p,
+                Emissions<Value, Time, Constant, Variable>& E_p)
+        : Climate<Value, Time, Constant, Variable>(global_p, control_p, E_p), settings(settings_p){};
 
     // Concentration in atmosphere 2010 (GtC)
     Value M_atm(Time t) {
         return M_atm_series.get(t, [this](Time t, Value M_atm_last) {
 
-            return M_atm_last * b11 + M_u(t - 1) * b21 + (E(t - 1) * (global.timestep_length / 3.666));
+            return M_atm_last * b11 + M_u(t - 1) * b21 + E(t - 1) * global.timestep_length / 3.666;
 
         });
     }
@@ -88,18 +94,18 @@ class DICEClimate : public Climate<Value, Time> {
     }
 
     // Exogenous forcing for other greenhouse gases
-    Value forcoth(Time t) {
-        const Value year = global.timestep_length * t - global.start_year;
+    Constant forcoth(Time t) {
+        const Time year = global.start_year + global.timestep_length * t;
         if (year > 2100) {
-            return fex1 - fex0;
+            return fex1;
         } else {
-            return fex0 + (1 / 18) * (fex1 - fex0) * (global.timestep_length * 0.2 * t);
+            return fex0 + (fex1 - fex0) * (global.timestep_length * 0.2 * t) / 18;
         }
     }
 
     // Increase in radiative forcing (watts per m2 from 1900)
     Value force(Time t) {
-        return fco22x * (std::log(M_atm(t) / 588) / std::log(2)) + forcoth(t);
+        return fco22x * std::log2(M_atm(t) / 588) + forcoth(t);  // TODO 588 == M_atm_eq ??
     }
 
     // Increase temperature of atmosphere (degrees C from 1900)
@@ -116,11 +122,14 @@ class DICEClimate : public Climate<Value, Time> {
         });
     }
 
-    bool observe(Observer<Value, Time>& observer) override {
+    bool observe(Observer<Value, Time, Constant>& observer) override {
         OBSERVE_VAR(M_atm);
         OBSERVE_VAR(M_l);
         OBSERVE_VAR(M_u);
         OBSERVE_VAR(T_ocean);
+        OBSERVE_VAR(T_atm);
+        OBSERVE_VAR(force);
+        OBSERVE_VAR(forcoth);
         OBSERVE_VAR(T_atm);
         return true;
     }

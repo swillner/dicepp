@@ -1,6 +1,7 @@
 #ifndef DICE_H
 #define DICE_H
 
+#include <autodiff.h>
 #include <memory>
 #include <vector>
 #include "Climate.h"
@@ -20,7 +21,7 @@ class NcDim;
 
 namespace dice {
 
-template<typename Value, typename Time>
+template<typename Value, typename Time, typename Constant, typename Variable>
 class Emissions;
 
 template<typename Value, typename Time>
@@ -29,18 +30,19 @@ class DICE {
     const settings::SettingsNode& settings;
     const Global<Value, Time> global;
 
-    std::vector<Economy<Value, Time>> economies;
-    std::unique_ptr<climate::Climate<Value, Time>> climate;
-    std::unique_ptr<damage::Damage<Value, Time>> damage;
+    std::vector<Economy<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>> economies;
+    std::unique_ptr<climate::Climate<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>> climate;
+    std::unique_ptr<damage::Damage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>> damage;
 
     void write_netcdf_output(const settings::SettingsNode& output_node);
+    void write_csv_output(const settings::SettingsNode& output_node);
     void optimize(const settings::SettingsNode& optimization_node, TimeSeries<Value>& initial_values);
 
   public:
     DICE(const settings::SettingsNode& settings_p);
-    Control<Value, Time> control;
-    inline Value calc_single_utility();
-    Emissions<Value, Time> emissions;
+    Control<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>> control;
+    inline autodiff::Value<Value> calc_single_utility();
+    Emissions<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>> emissions;
     void reset();
     void initialize();
     void output();

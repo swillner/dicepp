@@ -6,7 +6,7 @@ GCC_WARNINGS := -Wall -Wextra -Werror \
 YAML_CPP_FILES := $(wildcard lib/settingsnode/lib/yaml-cpp/src/*.cpp)
 YAML_OBJ_FILES := $(patsubst lib/settingsnode/lib/yaml-cpp/src/%.cpp,bin/yaml/%.o,$(YAML_CPP_FILES))
 CPP_FILES := $(wildcard src/*.cpp)
-OBJ_FILES := $(patsubst src/%.cpp,bin/%.o,$(CPP_FILES)) bin/borg/borg.o bin/borg/mt19937ar.o
+OBJ_FILES := $(patsubst src/%.cpp,bin/%.o,$(CPP_FILES)) bin/borg/borg.o bin/borg/mt19937ar.o bin/midaco/midaco.o
 .SECONDARY: OBJ_FILES
 LD_FLAGS := -lstdc++ -lnetcdf_c++4 -lnetcdf -lnlopt -lipopt
 CC_FLAGS := -std=c++11 -pthread -I include -I include/climate -I include/damage -I lib/settingsnode/include -I lib/settingsnode/lib/yaml-cpp/include -I lib/cpp-library -I lib/borg  -I /usr/include/eigen3 -I /usr/include/coin/ -DHAVE_CSTDDEF
@@ -51,7 +51,12 @@ bin/%.o: src/%.cpp include/%.h $(HEADERS_REQUIRING_REBUILD)
 bin/borg/%.o: lib/borg/%.c lib/borg/%.h
 	@mkdir -p bin/borg
 	@echo Compiling $<
-	@$(CXX) $(CC_FLAGS) $(DICEPP_FLAGS) -c -o $@ $<
+	@gcc $(CC_FLAGS) -c -o $@ $<
+
+bin/midaco/%.o: lib/midaco/%.c
+	@mkdir -p bin/midaco
+	@echo Compiling $<
+	@gcc $(CC_FLAGS) -c -o $@ $<
 
 bin/main.o: src/main.cpp $(HEADERS_REQUIRING_REBUILD)
 	@mkdir -p bin

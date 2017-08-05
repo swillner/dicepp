@@ -9,7 +9,7 @@ parameters:
   scale2: -3855.106895 # Additive scaling coefficient
   start_year: 2010
   timestep_length: 1 # 5
-  timestep_num: 100 # 91 # 19
+  timestep_num: 91 # 400 # 91 # 19
 
 regions:
   - economy:
@@ -44,7 +44,7 @@ regions:
 climate:
   type: dice
   parameters:
-    b12: 0.01810 # Carbon cycle transition matrix
+    b12: 0.0181 # Carbon cycle transition matrix
     b23: 0.00071 # Carbon cycle transition matrix
     M_atm0: 830.4 # Initial Concentration in atmosphere 2010 (GtC)
     M_atm_lower: 10
@@ -98,7 +98,7 @@ output:
     - Y_net
     - Y
     - mu
-    - forc
+    - force
     - T_atm
     - T_ocean
     - M_atm
@@ -123,7 +123,7 @@ control_bau:
     filename: examples/original_results_bau.csv
     column: 17
 
-control:
+2_control:
   s:
     format: csv
     filename: /home/sven/Downloads/DiceResults_2013_1year.csv
@@ -140,21 +140,41 @@ _control:
     column: 17
 
 optimization:
-  #library: nlopt
-  #library: pagmo
   s_fix_steps: 10
+  iterations:
+    - library: midaco
+      timeout: 45
+      maxiter: 10000
+      rel_var_precision: 0.1
+      utility_precision: 0.1
+      limit_cca: true
   _iterations:
     - library: nlopt
-      algorithm: direct
-      timeout: 30
-      maxiter: 100000
-      utility_precision: 1
-      iterations: 10
+      algorithm: cobyla
+      timeout: 45
+      maxiter: 10000
+      rel_var_precision: 0.1
+      utility_precision: 0.1
       limit_cca: true
     - library: nlopt
       algorithm: cobyla
-      timeout: 30
-      maxiter: 100000
-      utility_precision: 0.01
-      iterations: 10
+      timeout: 45
+      maxiter: 10000
+      rel_var_precision: 0.05
+      utility_precision: 0.05
       limit_cca: true
+    - library: nlopt
+      algorithm: cobyla
+      timeout: 45
+      maxiter: 10000
+      rel_var_precision: 0.01
+      utility_precision: 0.01
+      limit_cca: true
+    - library: nlopt
+      algorithm: cobyla
+      timeout: 45
+      maxiter: 10000
+      rel_var_precision: 0.001
+      utility_precision: 0.001
+      limit_cca: true
+      repeat: 3

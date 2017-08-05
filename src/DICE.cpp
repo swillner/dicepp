@@ -13,8 +13,9 @@
 #include "settingsnode.h"
 
 #define WITH_NLOPT
-//#define WITH_PAGMO
-//#define WITH_BORG
+#define WITH_PAGMO
+#define WITH_BORG
+#define WITH_MIDACO
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -29,13 +30,62 @@
 #ifdef WITH_BORG
 #include "borg.h"
 #endif
+#ifdef WITH_MIDACO
+extern "C" {
+int midaco(long int*,
+           long int*,
+           long int*,
+           long int*,
+           long int*,
+           long int*,
+           double*,
+           double*,
+           double*,
+           double*,
+           double*,
+           long int*,
+           long int*,
+           double*,
+           double*,
+           long int*,
+           long int*,
+           long int*,
+           double*,
+           long int*,
+           char*);
+}
+extern "C" {
+int midaco_print(int,
+                 long int,
+                 long int,
+                 long int*,
+                 long int*,
+                 double*,
+                 double*,
+                 double*,
+                 double*,
+                 double*,
+                 long int,
+                 long int,
+                 long int,
+                 long int,
+                 long int,
+                 double*,
+                 double*,
+                 long int,
+                 long int,
+                 double*,
+                 long int,
+                 char*);
+}
+#endif
 #pragma GCC diagnostic pop
 
 namespace dice {
 
 template<typename Value, typename Time>
 DICE<Value, Time>::DICE(const settings::SettingsNode& settings_p)
-    : settings(settings_p), global(settings["parameters"]), control(global.timestep_num), emissions(global, economies) {
+    : settings(settings_p), global(settings["parameters"]), control(global.timestep_num), emissions(global, control, economies) {
 }
 
 template<typename Value, typename Time>
@@ -45,7 +95,8 @@ void DICE<Value, Time>::initialize() {
         const settings::SettingsNode& climate_node = settings["climate"];
         const std::string& type = climate_node["type"].as<std::string>();
         if (type == "dice") {
-            climate.reset(new climate::DICEClimate<Value, Time>(climate_node["parameters"], global, emissions));
+            climate.reset(new climate::DICEClimate<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>(climate_node["parameters"], global, control,
+                                                                                                                   emissions));
         } else {
             throw std::runtime_error("unknown climate module type '" + type + "'");
         }
@@ -57,7 +108,7 @@ void DICE<Value, Time>::initialize() {
         const settings::SettingsNode& damage_node = settings["damage"];
         const std::string& type = damage_node["type"].as<std::string>();
         if (type == "dice") {
-            damage.reset(new damage::DICEDamage<Value, Time>(damage_node["parameters"], global, *climate));
+            damage.reset(new damage::DICEDamage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>(damage_node["parameters"], global, *climate));
         } else {
             throw std::runtime_error("unknown damage module type '" + type + "'");
         }
@@ -67,13 +118,16 @@ void DICE<Value, Time>::initialize() {
     // Initialize regions
     {
         for (const auto&& region_node : settings["regions"].as_sequence()) {
-            economies.emplace_back(Economy<Value, Time>(region_node["economy"], global, control, *climate, *damage));
+            economies.emplace_back(
+                Economy<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>(region_node["economy"], global, control, *climate, *damage));
         }
     }
 
+    emissions.initialize();
+
     // Initialize control variables
     if (settings.has("control")) {
-        class ControlInputObserver : public Observer<Value, Time> {
+        class ControlInputObserver : public Observer<autodiff::Value<Value>, Time, Value> {
           protected:
             const settings::SettingsNode& input_node;
 
@@ -158,24 +212,83 @@ static bool with_constraint;
 template<typename Value, typename Time>
 void DICE<Value, Time>::optimize(const settings::SettingsNode& optimization_node, TimeSeries<Value>& initial_values) {
     const std::string& library = optimization_node["library"].as<std::string>();
-    const Time optimization_variables = initial_values.size();
     if (false) {  // only for ifdefs below
+#ifdef WITH_MIDACO
+    } else if (library == "midaco") {
+        // std::vector<double> param(12);
+        long int o, n, ni, m, me, maxeval, maxtime, printeval, save2file, iflag = 0, istop = 0;
+        std::vector<double> x(initial_values), xl(control.variables_num, 0), xu(control.variables_num, 1), param(12);
+        char key[] = "MIDACO_LIMITED_VERSION___[CREATIVE_COMMONS_BY-NC-ND_LICENSE]";
+
+        o = 1;                      // Number of objectives
+        n = control.variables_num;  // Number of variables (in total)
+        ni = 0;                     // Number of integer variables (0 <= ni <= n)
+        m = 1;                      // Number of constraints (in total)
+        me = 0;                     // Number of equality constraints (0 <= me <= m)
+
+        long int p = 0;  // parallelization
+        long int lrw = 105 * n + m * p + 2 * m + o * o + 4 * o * p + 10 * o + 3 * p + 610;
+        std::vector<double> rw(lrw);
+        long int liw = 3 * n + p + 110;
+        std::vector<long int> iw(liw);
+        long int paretomax = 100;
+        long int lpf = (o + m + n) * paretomax + 1;
+        std::vector<double> pf(lpf);
+        x = initial_values;
+
+        printeval = 1000; /* Print-Frequency for current best solution (e.g. 1000) */
+        save2file = 0;    /* Save SCREEN and SOLUTION to TXT-files [ 0=NO/ 1=YES]  */
+
+        maxeval = 10000;
+        maxtime = 60;
+
+        param[0] = 0.0;  /* ACCURACY  */
+        param[1] = 0.0;  /* SEED      */
+        param[2] = 0.0;  /* FSTOP     */
+        param[3] = 0.0;  /* ALGOSTOP  */
+        param[4] = 0.0;  /* EVALSTOP  */
+        param[5] = 0.0;  /* FOCUS     */
+        param[6] = 0.0;  /* ANTS      */
+        param[7] = 0.0;  /* KERNEL    */
+        param[8] = 0.0;  /* ORACLE    */
+        param[9] = 0.0;  /* PARETOMAX */
+        param[10] = 0.0; /* EPSILON   */
+        param[11] = 0.0; /* CHARACTER */
+
+        Value f = 0;
+        Value g = 0;
+        midaco_print(1, printeval, save2file, &iflag, &istop, &f, &g, &x[0], &xl[0], &xu[0], o, n, ni, m, me, &rw[0], &pf[0], maxeval, maxtime, &param[0], p,
+                     key);
+        while (istop == 0) {
+            reset();
+            f = -calc_single_utility().value();
+            if (with_constraint) {
+                Value cca = 90;  // TODO
+                for (Time t = 0; t < global.timestep_num; ++t) {
+                    cca += (global.timestep_length * dice->emissions(t) / 3.666).value();
+                }
+                g = dice->global.fosslim - cca;
+            }
+            midaco(&p, &o, &n, &ni, &m, &me, &x[0], &f, &g, &xl[0], &xu[0], &iflag, &istop, &param[0], &rw[0], &lrw, &iw[0], &liw, &pf[0], &lpf, key);
+            midaco_print(2, printeval, save2file, &iflag, &istop, &f, &g, &x[0], &xl[0], &xu[0], o, n, ni, m, me, &rw[0], &pf[0], maxeval, maxtime, &param[0],
+                         p, key);
+        }
+#endif
 #ifdef WITH_PAGMO
     } else if (library == "pagmo") {
-        std::fill(std::begin(control.s), std::end(control.s), global.optlrsav);
         struct PagmoProblem {
             DICE<Value, Time>* dice;
             Time n;
             bool with_constraint;
             pagmo::vector_double fitness(const pagmo::vector_double& vars) const {
                 pagmo::vector_double f(with_constraint ? 2 : 1);
-                dice->control.s.assign(std::begin(vars), std::end(vars));
+                dice->control.s.value().assign(std::begin(vars), std::end(vars));
                 dice->reset();
-                f[0] = -dice->calc_single_utility();
+                f[0] = -dice->calc_single_utility().value();
                 if (with_constraint) {
                     Value cca = 90;  // TODO
                     for (Time t = 0; t < dice->global.timestep_num; ++t) {
-                        cca += dice->global.timestep_length * dice->emissions(t) / 3.666;
+                        cca += (dice->global.timestep_length * dice->emissions(t) / 3.666).value();
                     }
 
                     f[1] = cca - dice->global.fosslim;
@@ -202,7 +315,7 @@ void DICE<Value, Time>::optimize(const settings::SettingsNode& optimization_node
         };
         PagmoProblem pagmo_problem;
         pagmo_problem.dice = this;
-        pagmo_problem.n = optimization_variables;
+        pagmo_problem.n = control.variables_num;
         pagmo_problem.with_constraint = optimization_node["limit_cca"].as<bool>();
         pagmo::problem problem{pagmo_problem};
         pagmo::population population{problem};
@@ -238,21 +351,20 @@ void DICE<Value, Time>::optimize(const settings::SettingsNode& optimization_node
             population = algorithm.evolve(population);
         }
         pagmo::vector_double vars = population.champion_x();
-        control.s.assign(std::begin(vars), std::end(vars));
+        control.s.value().assign(std::begin(vars), std::end(vars));
 #endif
 #ifdef WITH_BORG
     } else if (library == "borg") {
         dice = this;
-        n = optimization_variables;
+        n = control.variables_num;
         with_constraint = optimization_node["limit_cca"].as<bool>();
-        std::fill(std::begin(control.s), std::end(control.s), global.optlrsav);
-        BORG_Problem opt = BORG_Problem_create(optimization_variables, 1, with_constraint ? 1 : 0, [](double* vars, double* objs, double* consts) {
-            dice->control.s.assign(vars, vars + n);
+        BORG_Problem opt = BORG_Problem_create(control.variables_num, 1, with_constraint ? 1 : 0, [](double* vars, double* objs, double* consts) {
+            dice->control.s.value().assign(vars, vars + n);
             dice->reset();
-            Value utility = dice->calc_single_utility();
+            Value utility = dice->calc_single_utility().value();
             Value cca = 90;  // TODO
             for (Time t = 0; t < dice->global.timestep_num; ++t) {
-                cca += dice->global.timestep_length * dice->emissions(t) / 3.666;
+                cca += (dice->global.timestep_length * dice->emissions(t) / 3.666).value();
             }
             objs[0] = -utility;
             if (with_constraint) {
@@ -260,7 +372,7 @@ void DICE<Value, Time>::optimize(const settings::SettingsNode& optimization_node
             }
         });
 
-        for (Time t = 0; t < optimization_variables; ++t) {
+        for (Time t = 0; t < control.variables_num; ++t) {
             BORG_Problem_set_bounds(opt, t, 0, 1);
         }
 
@@ -353,7 +465,7 @@ void DICE<Value, Time>::optimize(const settings::SettingsNode& optimization_node
             throw std::runtime_error("unknown algorithm '" + algorithm_name + "'");
         }
         /*
-        nlopt::opt super_opt(nlopt::LN_AUGLAG, optimization_variables);
+        nlopt::opt super_opt(nlopt::LN_AUGLAG, control.variables_num);
         super_opt.add_inequality_constraint(
             [](unsigned n, const double* x, double* grad, void* data) {
                 DICE* dice = static_cast<DICE*>(data);
@@ -376,8 +488,8 @@ void DICE<Value, Time>::optimize(const settings::SettingsNode& optimization_node
             },
             this);
         super_opt.set_ftol_abs(optimization_node["utility_precision"].as<Value>());
-        super_opt.set_lower_bounds(std::vector<Value>(optimization_variables, 0));
-        super_opt.set_upper_bounds(std::vector<Value>(optimization_variables, 1));
+        super_opt.set_lower_bounds(std::vector<Value>(control.variables_num, 0));
+        super_opt.set_upper_bounds(std::vector<Value>(control.variables_num, 1));
         if (optimization_node.has("maxiter")) {
             super_opt.set_maxeval(optimization_node["maxiter"].as<size_t>());
         }
@@ -387,19 +499,34 @@ void DICE<Value, Time>::optimize(const settings::SettingsNode& optimization_node
         //*/
 
         //*
-        nlopt::opt opt(algorithm_type, optimization_variables);
+        nlopt::opt opt(algorithm_type, control.variables_num);
+        if (optimization_node["limit_cca"].as<bool>()) {
+            opt.add_inequality_constraint(
+                [](unsigned n, const double* x, double* grad, void* data) {
+                    DICE* dice = static_cast<DICE*>(data);
+                    dice->control.s.value().assign(x, x + n);
+                    dice->reset();
+                    dice->calc_single_utility();
+                    Value cca = 90;  // TODO
+                    for (Time t = 0; t < dice->global.timestep_num - 1; ++t) {
+                        cca += (dice->global.timestep_length * dice->emissions(t) / 3.666).value();  // TODO
+                    }
+                    return cca - dice->global.fosslim;
+                },
+                this, 0.1);
+        }
         opt.set_max_objective(
             [](unsigned n, const double* x, double* grad, void* data) {
                 DICE* dice = static_cast<DICE*>(data);
-                dice->control.s.assign(x, x + n);
+                dice->control.s.value().assign(x, x + n);
                 dice->reset();
-                return dice->calc_single_utility();
+                return dice->calc_single_utility().value();  // TODO
             },
             this);
         //*/
 
         /*
-        nlopt::opt opt(nlopt::LN_BOBYQA, optimization_variables);
+        nlopt::opt opt(nlopt::LN_BOBYQA, control.variables_num);
         opt.set_max_objective(
             [](unsigned n, const double* x, double* grad, void* data) {
                 DICE* dice = static_cast<DICE*>(data);
@@ -414,9 +541,14 @@ void DICE<Value, Time>::optimize(const settings::SettingsNode& optimization_node
             },
             this);
         //*/
-        opt.set_ftol_abs(optimization_node["utility_precision"].as<Value>());
-        opt.set_lower_bounds(std::vector<Value>(optimization_variables, 0));
-        opt.set_upper_bounds(std::vector<Value>(optimization_variables, 1));
+        if (optimization_node.has("utility_precision")) {
+            opt.set_ftol_abs(optimization_node["utility_precision"].as<Value>());
+        }
+        if (optimization_node.has("rel_var_precision")) {
+            opt.set_xtol_rel(optimization_node["rel_var_precision"].as<Value>());
+        }
+        opt.set_lower_bounds(std::vector<Value>(control.variables_num, 0));
+        opt.set_upper_bounds(std::vector<Value>(control.variables_num, 1));
         if (optimization_node.has("maxiter")) {
             opt.set_maxeval(optimization_node["maxiter"].as<size_t>());
         }
@@ -444,23 +576,23 @@ void DICE<Value, Time>::run() {
         // MIU.up[t] = limmu * partfract[t];
         // MIU.up[t] $(t.val < 146) = 1;
 
-        Value utility;
-
         const settings::SettingsNode& optimization_node = settings["optimization"];
         if (optimization_node.has("iterations")) {
-            const Time optimization_variables = global.timestep_num - optimization_node["s_fix_steps"].as<Time>(0);
-            std::fill(std::begin(control.s), std::end(control.s), global.optlrsav);
-            TimeSeries<Value> initial_values(optimization_variables, 0);
+            const size_t optimization_variables_num = global.timestep_num - optimization_node["s_fix_steps"].as<Time>(0);
+            std::fill(std::begin(control.s.value()), std::end(control.s.value()), global.optlrsav);
+            TimeSeries<Value> initial_values(optimization_variables_num, 0);
             for (const auto& iteration_node : optimization_node["iterations"].as_sequence()) {
-                initial_values.assign(std::begin(control.s), std::begin(control.s) + optimization_variables);
-                optimize(iteration_node, initial_values);
-                reset();
-                utility = calc_single_utility();
+                for (size_t i = 0; i < iteration_node["repeat"].as<size_t>(1); ++i) {
+                    initial_values.assign(std::begin(control.s.value()), std::begin(control.s.value()) + optimization_variables_num);
+                    optimize(iteration_node, initial_values);
+                    reset();
+                    autodiff::Value<Value> utility = calc_single_utility();
+                    std::cout << "Finished with utility = " << utility.value() << std::endl;
+                }
             }
         } else {
-            utility = calc_single_utility();
+            autodiff::Value<Value> utility = calc_single_utility();
         }
-        std::cout << "Finished with utility = " << utility << std::endl;
     } else {
         throw std::runtime_error("multiple regions not supported yet");
     }
@@ -477,11 +609,11 @@ void DICE<Value, Time>::reset() {
 }
 
 template<typename Value, typename Time>
-Value DICE<Value, Time>::calc_single_utility() {
+autodiff::Value<Value> DICE<Value, Time>::calc_single_utility() {
 #ifdef DEBUG
     try {
 #endif
-        Value utility = 0;
+        autodiff::Value<Value> utility{control.variables_num, 0};
         for (Time t = 0; t < global.timestep_num; ++t) {
             utility += economies[0].utility(t);
         }
@@ -501,6 +633,10 @@ void DICE<Value, Time>::output() {
         const std::string& type = output_node["type"].as<std::string>();
         if (type == "netcdf") {
             write_netcdf_output(output_node);
+        } else if (type == "csv") {
+            write_csv_output(output_node);
+        } else {
+            throw std::runtime_error("unknown output type '" + type + "'");
         }
     }
 }
@@ -516,7 +652,7 @@ void DICE<Value, Time>::write_netcdf_output(const settings::SettingsNode& output
             const Time year = global.start_year + t * global.timestep_length;
             time_var.putVar({t}, (const unsigned int)year);
         }
-        class NetCDFOutputObserver : public Observer<Value, Time> {
+        class NetCDFOutputObserver : public Observer<autodiff::Value<Value>, Time, Value> {
           protected:
             const netCDF::NcGroup& group;
             const netCDF::NcDim& time_dim;
@@ -525,6 +661,9 @@ void DICE<Value, Time>::write_netcdf_output(const settings::SettingsNode& output
           public:
             NetCDFOutputObserver(const netCDF::NcGroup& group_p, const netCDF::NcDim& time_dim_p, const settings::SettingsNode& output_node_p)
                 : group(group_p), time_dim(time_dim_p), output_node(output_node_p){};
+            std::tuple<bool, bool, Time> want(const std::string& name) override {
+                return {true, true, 0};
+            }
             bool observe(const std::string& name, TimeSeries<Value>& v) override {
                 netCDF::NcVar var = group.addVar(name, netCDF::NcType::nc_FLOAT, {time_dim});
                 var.setCompression(false, true, 7);
@@ -538,7 +677,77 @@ void DICE<Value, Time>::write_netcdf_output(const settings::SettingsNode& output
         climate->observe(observer);
         damage->observe(observer);
         control.observe(observer);
-        file.putAtt("utility", netCDF::NcType::nc_FLOAT, calc_single_utility());
+        emissions.observe(observer);
+        file.putAtt("utility", netCDF::NcType::nc_FLOAT, calc_single_utility().value());
+    } else {
+        throw std::runtime_error("multiple regions not supported yet");
+    }
+}
+
+template<typename Value, typename Time>
+void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_node) {
+    if (economies.size() == 1) {
+        const std::string& filename = output_node["filename"].as<std::string>();
+        std::ofstream file(filename);
+        if (!file) {
+            throw std::runtime_error("could not write to '" + filename + "'");
+        }
+
+        class CSVOutputObserver : public Observer<autodiff::Value<Value>, Time, Value> {
+          protected:
+            std::ofstream& file;
+
+          public:
+            Time t;
+            std::string var;
+
+            CSVOutputObserver(std::ofstream& file_p) : file(file_p){};
+            std::tuple<bool, bool, Time> want(const std::string& name) override {
+                return {name == var, false, t};
+            }
+            bool observe(const std::string& name, const autodiff::Value<Value>& v) override {
+                file << v.value();
+                return false;
+            }
+            bool observe(const std::string& name, TimeSeries<Value>& v) override {
+                if (name == var) {
+                    file << v[t];
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        };
+        const auto& variables = output_node["columns"].as_sequence();
+        CSVOutputObserver observer(file);
+        for (auto&& var = std::begin(variables); var != std::end(variables); ++var) {
+            if (var != std::begin(variables)) {
+                file << ",";
+            }
+            file << "\"" << (*var).as<std::string>() << "\"";
+        }
+        file << "\n";
+        for (Time t = 0; t < global.timestep_num; ++t) {
+            observer.t = t;
+            for (auto&& var = std::begin(variables); var != std::end(variables); ++var) {
+                if (var != std::begin(variables)) {
+                    file << ",";
+                }
+                const std::string& name = (*var).as<std::string>();
+                if (name == "t") {
+                    file << t;
+                } else if (name == "year") {
+                    file << (global.start_year + t * global.timestep_length);
+                } else {
+                    observer.var = name;
+                    if (economies[0].observe(observer) && climate->observe(observer) && damage->observe(observer) && control.observe(observer)
+                        && emissions.observe(observer)) {
+                        throw std::runtime_error("variable '" + name + "' not found");
+                    }
+                }
+            }
+            file << "\n";
+        }
     } else {
         throw std::runtime_error("multiple regions not supported yet");
     }

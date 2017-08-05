@@ -12,49 +12,50 @@
 
 namespace dice {
 
-template<typename Value, typename Time>
+template<typename Value, typename Time, typename Constant = Value, typename Variable = TimeSeries<Value>>
 class Economy {
   protected:
     const settings::SettingsNode& settings;
-    const Control<Value, Time>& control;
-    const Global<Value, Time>& global;
-    climate::Climate<Value, Time>& climate;
-    damage::Damage<Value, Time>& damage;
+    const Control<Value, Time, Constant, Variable>& control;
+    const Global<Constant, Time>& global;
+    climate::Climate<Value, Time, Constant, Variable>& climate;
+    damage::Damage<Value, Time, Constant, Variable>& damage;
 
-    const Value C_lower{settings["C_lower"].as<Value>()};
-    const Value C_pc_lower{settings["C_pc_lower"].as<Value>()};
-    const Value E0{settings["E0"].as<Value>()};                          // Industrial emissions 2010 (GtCO2 per year)
-    const Value E_land0{settings["E_land0"].as<Value>()};                // Carbon emissions from land 2010 (GtCO2 per year)
-    const Value cprice0{settings["cprice0"].as<Value>()};                // Initial base carbon price (2005$ per tCO2)
-    const Value dE_land{settings["dE_land"].as<Value>()};                // Decline rate of land emissions (per 5 years)
-    const Value dA{settings["dA"].as<Value>()};                          // Decline rate of TFP per 5 years
-    const Value dsig{settings["dsig"].as<Value>()};                      // Decline rate of decarbonization (per period)
-    const Value gA0{settings["gA0"].as<Value>()};                        // Initial growth rate for TFP per year
-    const Value gback{settings["gback"].as<Value>()};                    // Initial cost decline backstop cost 5 years
-    const Value gcprice{settings["gcprice"].as<Value>()};                // Growth rate of base carbon price per year
-    const Value gsigma1{settings["gsigma1"].as<Value>()};                // Initial growth of sigma (per year)
-    const Value lim_mu{settings["lim_mu"].as<Value>()};                  // Upper limit on control rate after 2150
-    const Value mu0{settings["mu0"].as<Value>()};                        // Initial emissions control rate for base case 2010
-    const Value partfract2010{settings["partfract2010"].as<Value>()};    // Fraction of emissions under control in 2010
-    const Value partfractfull{settings["partfractfull"].as<Value>()};    // Fraction of emissions under control at full time
-    const Value pback{settings["pback"].as<Value>()};                    // Cost of backstop 2005$ per tCO2 2010
-    const Value periodfullpart{settings["periodfullpart"].as<Value>()};  // Period at which have full participation
-    const Value pop_adj{settings["pop_adj"].as<Value>()};                // Growth rate to calibrate to 2050 pop projection
-    const Value pop_asym{settings["pop_asym"].as<Value>()};              // Asymptotic population (millions)
-    const Value Q0{settings["Q0"].as<Value>()};                          // Initial gross output (trill 2005 USD)
-    const Value tnopol{settings["tnopol"].as<Value>()};                  // Period before which no emissions controls base
+    const Constant C_lower{settings["C_lower"].as<Constant>()};
+    const Constant C_pc_lower{settings["C_pc_lower"].as<Constant>()};
+    const Constant E0{settings["E0"].as<Constant>()};                          // Industrial emissions 2010 (GtCO2 per year)
+    const Constant E_land0{settings["E_land0"].as<Constant>()};                // Carbon emissions from land 2010 (GtCO2 per year)
+    const Constant cprice0{settings["cprice0"].as<Constant>()};                // Initial base carbon price (2005$ per tCO2)
+    const Constant dE_land{settings["dE_land"].as<Constant>()};                // Decline rate of land emissions (per 5 years)
+    const Constant dA{settings["dA"].as<Constant>()};                          // Decline rate of TFP per 5 years
+    const Constant dsig{settings["dsig"].as<Constant>()};                      // Decline rate of decarbonization (per period)
+    const Constant gA0{settings["gA0"].as<Constant>()};                        // Initial growth rate for TFP per year
+    const Constant gback{settings["gback"].as<Constant>()};                    // Initial cost decline backstop cost 5 years
+    const Constant gcprice{settings["gcprice"].as<Constant>()};                // Growth rate of base carbon price per year
+    const Constant gsigma1{settings["gsigma1"].as<Constant>()};                // Initial growth of sigma (per year)
+    const Constant lim_mu{settings["lim_mu"].as<Constant>()};                  // Upper limit on control rate after 2150
+    const Constant mu0{settings["mu0"].as<Constant>()};                        // Initial emissions control rate for base case 2010
+    const Constant partfract2010{settings["partfract2010"].as<Constant>()};    // Fraction of emissions under control in 2010
+    const Constant partfractfull{settings["partfractfull"].as<Constant>()};    // Fraction of emissions under control at full time
+    const Constant pback{settings["pback"].as<Constant>()};                    // Cost of backstop 2005$ per tCO2 2010
+    const Constant periodfullpart{settings["periodfullpart"].as<Constant>()};  // Period at which have full participation
+    const Constant pop_adj{settings["pop_adj"].as<Constant>()};                // Growth rate to calibrate to 2050 pop projection
+    const Constant pop_asym{settings["pop_asym"].as<Constant>()};              // Asymptotic population (millions)
+    const Constant Q0{settings["Q0"].as<Constant>()};                          // Initial gross output (trill 2005 USD)
+    const Constant tnopol{settings["tnopol"].as<Constant>()};                  // Period before which no emissions controls base
 
-    StepwiseBackwardLookingTimeSeries<Value, Time> L_series{global.timestep_num, settings["L0"].as<Value>()};
-    StepwiseBackwardLookingTimeSeries<Value, Time> A_series{global.timestep_num, settings["A0"].as<Value>()};
-    StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> K_series{global.timestep_num, {settings["K0"].as<Value>(), settings["K_lower"].as<Value>()}};
-    StepwiseBackwardLookingTimeSeries<Value, Time> cca_series{global.timestep_num, settings["cca0"].as<Value>()};
+    StepwiseBackwardLookingTimeSeries<Value, Time> L_series{global.timestep_num, {control.variables_num, settings["L0"].as<Constant>()}};
+    StepwiseBackwardLookingTimeSeries<Value, Time> A_series{global.timestep_num, {control.variables_num, settings["A0"].as<Constant>()}};
+    StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> K_series{
+        global.timestep_num, {{control.variables_num, settings["K0"].as<Constant>()}, {control.variables_num, settings["K_lower"].as<Constant>()}}};
+    StepwiseBackwardLookingTimeSeries<Value, Time> cca_series{global.timestep_num, {control.variables_num, settings["cca0"].as<Constant>()}};
 
   public:
     Economy(const settings::SettingsNode& settings_p,
-            const Global<Value, Time>& global_p,
-            const Control<Value, Time>& control_p,
-            climate::Climate<Value, Time>& climate_p,
-            damage::Damage<Value, Time>& damage_p)
+            const Global<Constant, Time>& global_p,
+            const Control<Value, Time, Constant, Variable>& control_p,
+            climate::Climate<Value, Time, Constant, Variable>& climate_p,
+            damage::Damage<Value, Time, Constant, Variable>& damage_p)
         : settings(settings_p), global(global_p), control(control_p), climate(climate_p), damage(damage_p) {
     }
 
@@ -65,7 +66,7 @@ class Economy {
         cca_series.reset();
     }
 
-    bool observe(Observer<Value, Time>& observer) {
+    bool observe(Observer<Value, Time, Constant>& observer) {
         OBSERVE_VAR(A);
         OBSERVE_VAR(C);
         OBSERVE_VAR(C_pc);
@@ -109,7 +110,7 @@ class Economy {
     Value A(Time t) {
         return A_series.get(t, [this](Time t, Value A_last) {
 
-            const Value gA_t_m1 = gA0 * std::exp(-dA * global.timestep_length * (t - 1));
+            const Constant gA_t_m1 = gA0 * std::exp(-dA * global.timestep_length * (t - 1));
             return A_last / (1 - gA_t_m1);
 
         });
@@ -134,29 +135,29 @@ class Economy {
     }
 
     // CO2-equivalent-emissions output ratio
-    Value sigma(Time t) {
-        const Value sig0 = E0 / (Q0 * (1 - mu0));  // Carbon intensity 2010 (kgCO2 per output 2005 USD 2010)
+    Constant sigma(Time t) {
+        const Constant sig0 = E0 / (Q0 * (1 - mu0));  // Carbon intensity 2010 (kgCO2 per output 2005 USD 2010)
         return sig0 * std::exp(5 / global.timestep_length * gsigma1 * (1 - std::pow(1 + dsig, t)) / (1 - std::pow(1 + dsig, 5 / global.timestep_length)));
     }
 
     // Average utility social discount rate
-    Value rr(Time t) {
+    Constant rr(Time t) {
         return 1 / std::pow(1 + global.prstp, t);
     }
 
     // Emissions from deforestation
-    Value E_tree(Time t) {
+    Constant E_tree(Time t) {
         return E_land0 * std::pow(1 - dE_land, 0.2 * global.timestep_length * t);
     }
 
     // Adjusted cost for backstop
-    Value cost1(Time t) {
-        const Value pbacktime_t = pback * std::pow(1 - gback, 0.2 * global.timestep_length * t);
+    Constant cost1(Time t) {
+        const Constant pbacktime_t = pback * std::pow(1 - gback, 0.2 * global.timestep_length * t);
         return pbacktime_t * sigma(t) / global.expcost2 / 1000;
     }
 
     // Fraction of emissions in control regime
-    Value partfract(Time t) {
+    Constant partfract(Time t) {
         if (t > periodfullpart) {
             return partfractfull;
         } else {
@@ -165,12 +166,12 @@ class Economy {
     }
 
     // Base Case Carbon Price
-    Value cpricebase(Time t) {
+    Constant cpricebase(Time t) {
         return cprice0 * std::pow(1 + gcprice, global.timestep_length * t);
     }
 
     // Backstop price
-    Value pbacktime(Time t) {
+    Constant pbacktime(Time t) {
         return pback * std::pow(1 - gback, 0.2 * global.timestep_length * t);
     }
 
@@ -199,7 +200,7 @@ class Economy {
         if (t < global.timestep_num - 1) {
             return (1 + global.prstp) * std::pow(C_pc(t + 1) / C_pc(t), global.elasmu) - 1;
         } else {
-            return 0.0;
+            return {control.variables_num, 0.0};
         }
     }
 

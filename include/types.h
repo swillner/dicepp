@@ -20,18 +20,40 @@ using TimeSeries = std::vector<Value>;
         return false;               \
     }
 
-template<typename Value, typename Time>
+template<typename Value, typename Time, typename Constant = Value>
 class Observer {
   public:
     template<typename Var>
     bool observe(const std::string& name, Var v, Time length) {
-        TimeSeries<Value> series(length);
-        for (Time t = 0; t < length; ++t) {
-            series[t] = v(t);
+        bool want_it;
+        bool want_all;
+        Time want_t;
+        std::tie(want_it, want_all, want_t) = want(name);
+        if (want_it) {
+            if (want_all) {
+                TimeSeries<Constant> series;
+                series.reserve(length);
+                for (Time t = 0; t < length; ++t) {
+                    series.emplace_back(Constant(v(t)));
+                }
+                return observe(name, series);
+            } else {
+                return observe(name, v(want_t));
+            }
+        } else {
+            return true;
         }
-        return observe(name, series);
     }
-    virtual bool observe(const std::string& name, TimeSeries<Value>& v) = 0;
+    virtual std::tuple<bool, bool, Time> want(const std::string& name) {
+        return {false, false, 0};
+    }
+    virtual bool observe(const std::string& name, TimeSeries<Constant>& v) = 0;
+    virtual bool observe(const std::string& name, const Value& v) {
+        return true;
+    }
+    virtual bool observe(const std::string& name, const Constant& v) {
+        return true;
+    }
 };
 
 template<typename... Types>
@@ -150,7 +172,12 @@ class BackwardLookingTimeSeries {
   public:
     const Value initial_value;
     BackwardLookingTimeSeries(Time size, Value initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p) {
-        series[0] = initial_value;
+    }
+    void set_first_value(Value first_value) {
+        series[0] = first_value;
+    }
+    Value get_first_value() const {
+        return series[0];
     }
 
     template<typename Function>
@@ -178,7 +205,9 @@ class BackwardLookingTimeSeries {
     }
     inline void reset() {
         invalidate();
+        Value first_value = series[0];
         std::fill(series.begin(), series.end(), initial_value);
+        series[0] = first_value;
     }
 };
 
@@ -193,8 +222,12 @@ class StepwiseBackwardLookingTimeSeries {
 
   public:
     const Value initial_value;
-    StepwiseBackwardLookingTimeSeries(Time size, Value initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p) {
-        series[0] = initial_value;
+    StepwiseBackwardLookingTimeSeries(Time size, Value initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p){};
+    void set_first_value(Value first_value) {
+        series[0] = first_value;
+    }
+    Value get_first_value() const {
+        return series[0];
     }
 
     template<typename Function>
@@ -222,7 +255,9 @@ class StepwiseBackwardLookingTimeSeries {
     }
     inline void reset() {
         invalidate();
+        Value first_value = series[0];
         std::fill(series.begin(), series.end(), initial_value);
+        series[0] = first_value;
     }
 };
 }

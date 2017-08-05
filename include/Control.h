@@ -4,17 +4,18 @@
 #include "types.h"
 
 namespace dice {
-template<typename Value, typename Time>
+template<typename Value, typename Time, typename Constant = Value, typename Variable = TimeSeries<Value>>
 class Control {
   public:
-    TimeSeries<Value> mu;  // Emission control rate GHGs
-    TimeSeries<Value> s;   // Gross savings rate as fraction of gross world product
+    const size_t variables_num;
+    Variable mu{0, variables_num, variables_num, 0};  // Emission control rate GHGs
+    Variable s{0, variables_num, variables_num, 0};   // Gross savings rate as fraction of gross world product
 
-    Control(Time length) : mu(length, 0), s(length, 0){};
+    Control(Time length) : variables_num(length){};  // TODO mu
 
-    bool observe(Observer<Value, Time>& observer) {
-        OBSERVE_SERIES(mu);
-        OBSERVE_SERIES(s);
+    bool observe(Observer<Value, Time, Constant>& observer) {
+        OBSERVE_SERIES(mu.value());
+        OBSERVE_SERIES(s.value());
         return true;
     }
 };
