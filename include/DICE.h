@@ -36,7 +36,6 @@ class DICE {
 
     void write_netcdf_output(const settings::SettingsNode& output_node);
     void write_csv_output(const settings::SettingsNode& output_node);
-    void optimize(const settings::SettingsNode& optimization_node, TimeSeries<Value>& initial_values);
 
   public:
     DICE(const settings::SettingsNode& settings_p);
