@@ -3,6 +3,7 @@
 #include <ncFile.h>
 #include <ncVar.h>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -17,11 +18,16 @@ namespace dice {
 
 template<typename Value, typename Time>
 DICE<Value, Time>::DICE(const settings::SettingsNode& settings_p)
-    : settings(settings_p), global(settings["parameters"]), control(global.timestep_num), emissions(global, control, economies) {
+    : settings(settings_p),
+      global(settings_p["parameters"]),
+      control(settings_p["parameters"]["timestep_num"].as<Time>()),
+      emissions(global, control, economies) {
 }
 
 template<typename Value, typename Time>
 void DICE<Value, Time>::initialize() {
+    std::cout << std::setprecision(13);
+
     // Initialize climate module
     {
         const settings::SettingsNode& climate_node = settings["climate"];
@@ -111,10 +117,6 @@ void DICE<Value, Time>::run() {
         throw std::runtime_error("no economies given");
     }
     if (economies.size() == 1) {
-        // Control rate limits
-        // MIU.up[t] = limmu * partfract[t];
-        // MIU.up[t] $(t.val < 146) = 1;
-
         const settings::SettingsNode& optimization_node = settings["optimization"];
         if (optimization_node.has("iterations")) {
             class DICEOptimization : public Optimization<Value, Time> {
@@ -127,14 +129,49 @@ void DICE<Value, Time>::run() {
                 using Optimization<Value, Time>::constraints_num;
                 DICEOptimization(size_t variables_num_p, size_t objectives_num_p, size_t constraints_num_p, DICE& dice_p)
                     : Optimization<Value, Time>(variables_num_p, objectives_num_p, constraints_num_p), dice(dice_p){};
+
                 std::vector<Value> objective(const Value* vars, Value* grad) override {
-                    return {0};
-                };
+#ifdef DEBUG
+                    try {
+#endif
+                        dice.control.s.value().assign(vars, vars + variables_num);
+                        dice.reset();
+                        const autodiff::Value<Value> utility = dice.calc_single_utility();
+                        if (grad) {
+                            std::copy(&utility.derivative()[0], &utility.derivative()[variables_num], grad);
+                        }
+                        return {utility.value()};
+#ifdef DEBUG
+                    } catch (std::exception& e) {
+                        std::cerr << "Exception '" << e.what() << "' in optimization" << std::endl;
+                        throw;
+                    }
+#endif
+                }
+
+                std::vector<Value> constraint(const Value* vars, Value* grad) override {
+#ifdef DEBUG
+                    try {
+#endif
+                        dice.control.s.value().assign(vars, vars + variables_num);
+                        dice.reset();
+                        const autodiff::Value<Value> c = dice.economies[0].cca(dice.global.timestep_num - 1) - dice.global.fosslim;
+                        if (grad) {
+                            std::copy(&c.derivative()[0], &c.derivative()[variables_num], grad);
+                        }
+                        return {c.value()};
+#ifdef DEBUG
+                    } catch (std::exception& e) {
+                        std::cerr << "Exception '" << e.what() << "' in optimization" << std::endl;
+                        throw;
+                    }
+#endif
+                }
             };
 
             const size_t optimization_variables_num = global.timestep_num - optimization_node["s_fix_steps"].as<Time>(0);
-            const size_t constraints_num = optimization_node["with_fosslim"].as<bool>() ? 1 : 0;
-            DICEOptimization optimization{optimization_variables_num, 1, constraints_num, *this };
+            const size_t constraints_num = optimization_node["limit_cca"].as<bool>() ? 1 : 0;
+            DICEOptimization optimization{optimization_variables_num, 1, constraints_num, *this};
             std::fill(std::begin(control.s.value()), std::end(control.s.value()), global.optlrsav);
             TimeSeries<Value> initial_values(optimization_variables_num, 0);
             for (const auto& iteration_node : optimization_node["iterations"].as_sequence()) {
@@ -142,12 +179,24 @@ void DICE<Value, Time>::run() {
                     initial_values.assign(std::begin(control.s.value()), std::begin(control.s.value()) + optimization_variables_num);
                     optimization.optimize(iteration_node, initial_values);
                     reset();
-                    autodiff::Value<Value> utility = calc_single_utility();
+                    const autodiff::Value<Value> utility = calc_single_utility();
+                    Value sum = 0;
+                    for (size_t i = 0; i < optimization_variables_num; ++i) {
+                        sum += utility.derivative()[i] * utility.derivative()[i];
+                    }
+                    std::cout << "Gradient length = " << std::sqrt(sum) << std::endl;
                     std::cout << "Finished with utility = " << utility.value() << std::endl;
                 }
             }
         } else {
-            autodiff::Value<Value> utility = calc_single_utility();
+            const size_t optimization_variables_num = global.timestep_num - 10;
+            const autodiff::Value<Value> utility = calc_single_utility();
+            Value sum = 0;
+            for (size_t i = 0; i < optimization_variables_num; ++i) {
+                sum += utility.derivative()[i] * utility.derivative()[i];
+            }
+            std::cout << "Gradient length = " << std::sqrt(sum) << std::endl;
+            std::cout << "Finished with utility = " << utility.value() << std::endl;
         }
     } else {
         throw std::runtime_error("multiple regions not supported yet");
@@ -166,20 +215,11 @@ void DICE<Value, Time>::reset() {
 
 template<typename Value, typename Time>
 autodiff::Value<Value> DICE<Value, Time>::calc_single_utility() {
-#ifdef DEBUG
-    try {
-#endif
-        autodiff::Value<Value> utility{control.variables_num, 0};
-        for (Time t = 0; t < global.timestep_num; ++t) {
-            utility += economies[0].utility(t);
-        }
-        return global.scale1 * utility + global.scale2;
-#ifdef DEBUG
-    } catch (std::exception& e) {
-        std::cerr << "Exception '" << e.what() << "' in optimization" << std::endl;
-        throw;
+    autodiff::Value<Value> utility{control.variables_num, 0};
+    for (Time t = 0; t < global.timestep_num; ++t) {
+        utility += economies[0].utility(t);
     }
-#endif
+    return global.scale1 * utility + global.scale2;
 }
 
 template<typename Value, typename Time>
@@ -223,7 +263,6 @@ void DICE<Value, Time>::write_netcdf_output(const settings::SettingsNode& output
             bool observe(const std::string& name, TimeSeries<Value>& v) override {
                 netCDF::NcVar var = group.addVar(name, netCDF::NcType::nc_FLOAT, {time_dim});
                 var.setCompression(false, true, 7);
-                // var.setFill<Value>(true, std::numeric_limits<Value>::quiet_NaN());
                 var.putVar(&v[0]);
                 return true;
             }
@@ -265,6 +304,10 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
                 file << v.value();
                 return false;
             }
+            bool observe(const std::string& name, const Value& v) override {
+                file << v;
+                return false;
+            }
             bool observe(const std::string& name, TimeSeries<Value>& v) override {
                 if (name == var) {
                     file << v[t];
@@ -283,6 +326,8 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
             file << "\"" << (*var).as<std::string>() << "\"";
         }
         file << "\n";
+        const auto utility = calc_single_utility();
+        const auto& dev = utility.derivative();
         for (Time t = 0; t < global.timestep_num; ++t) {
             observer.t = t;
             for (auto&& var = std::begin(variables); var != std::end(variables); ++var) {
@@ -294,6 +339,10 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
                     file << t;
                 } else if (name == "year") {
                     file << (global.start_year + t * global.timestep_length);
+                } else if (name == "utility") {
+                    file << utility.value();
+                } else if (name == "gradient") {
+                    file << dev[t];
                 } else {
                     observer.var = name;
                     if (economies[0].observe(observer) && climate->observe(observer) && damage->observe(observer) && control.observe(observer)

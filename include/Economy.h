@@ -44,8 +44,8 @@ class Economy {
     const Constant Q0{settings["Q0"].as<Constant>()};                          // Initial gross output (trill 2005 USD)
     const Constant tnopol{settings["tnopol"].as<Constant>()};                  // Period before which no emissions controls base
 
-    StepwiseBackwardLookingTimeSeries<Value, Time> L_series{global.timestep_num, {control.variables_num, settings["L0"].as<Constant>()}};
-    StepwiseBackwardLookingTimeSeries<Value, Time> A_series{global.timestep_num, {control.variables_num, settings["A0"].as<Constant>()}};
+    StepwiseBackwardLookingTimeSeries<Constant, Time> L_series{global.timestep_num, settings["L0"].as<Constant>()};
+    StepwiseBackwardLookingTimeSeries<Constant, Time> A_series{global.timestep_num, settings["A0"].as<Constant>()};
     StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> K_series{
         global.timestep_num, {{control.variables_num, settings["K0"].as<Constant>()}, {control.variables_num, settings["K_lower"].as<Constant>()}}};
     StepwiseBackwardLookingTimeSeries<Value, Time> cca_series{global.timestep_num, {control.variables_num, settings["cca0"].as<Constant>()}};
@@ -97,8 +97,8 @@ class Economy {
     }
 
     // Population (millions)
-    Value L(Time t) {
-        return L_series.get(t, [this](Time t, Value L_last) {
+    Constant L(Time t) {
+        return L_series.get(t, [this](Time t, Constant L_last) {
 
             return std::pow(L_series.initial_value, std::pow(1 - pop_adj, global.timestep_length * 0.2 * t)) * pop_asym
                    * std::pow(pop_asym, -std::pow(1 - pop_adj, global.timestep_length * 0.2 * t));
@@ -107,8 +107,8 @@ class Economy {
     }
 
     // Level of total factor productivity
-    Value A(Time t) {
-        return A_series.get(t, [this](Time t, Value A_last) {
+    Constant A(Time t) {
+        return A_series.get(t, [this](Time t, Constant A_last) {
 
             const Constant gA_t_m1 = gA0 * std::exp(-dA * global.timestep_length * (t - 1));
             return A_last / (1 - gA_t_m1);
@@ -118,7 +118,7 @@ class Economy {
 
     // Capital stock (trillions 2005 US dollars)
     Value K(Time t) {
-        return K_series.get(t, [this](Time t, Value K_last) {
+        return K_series.get(t, [this](Time t, const Value& K_last) {
 
             return std::pow(1 - global.dK, global.timestep_length) * K_last + global.timestep_length * I(t - 1);
 
@@ -127,7 +127,7 @@ class Economy {
 
     // Cumulative industrial carbon emissions (GTC)
     Value cca(Time t) {
-        return cca_series.get(t, [this](Time t, Value cca_last) {
+        return cca_series.get(t, [this](Time t, const Value& cca_last) {
 
             return cca_last + global.timestep_length * E_ind(t - 1) / 3.666;
 
@@ -241,7 +241,7 @@ class Economy {
 
     // One period utility function
     Value periodu(Time t) {
-        return (std::pow(C(t) * 1000 / L(t), 1 - global.elasmu) - 1) / (1 - global.elasmu) - 1;
+        return (std::pow(C(t) / (L(t) / 1000), 1 - global.elasmu) - 1) / (1 - global.elasmu) - 1;
     }
 
     // Total CO2 emissions (GtCO2 per year)
@@ -250,7 +250,7 @@ class Economy {
     }
 
     Value utility(Time t) {
-        return periodu(t) * L(t) * rr(t);
+        return periodu(t) * (L(t) * rr(t));
     }
 };
 }

@@ -1,12 +1,6 @@
 [submodule "lib/settingsnode"]
 	path = lib/settingsnode
 	url = https://github.com/swillner/settingsnode.git
-[submodule "lib/nlopt"]
-	path = lib/nlopt
-	url = https://github.com/stevengj/nlopt.git
-[submodule "lib/tqdm.cpp"]
-	path = lib/tqdm.cpp
-	url = git@github.com:swillner/tqdm.cpp.git
 [submodule "lib/cpp-library"]
 	path = lib/cpp-library
 	url = git@github.com:swillner/cpp-library

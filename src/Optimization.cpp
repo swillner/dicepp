@@ -3,9 +3,9 @@
 #include "settingsnode.h"
 
 #define WITH_NLOPT
-#define WITH_PAGMO
-#define WITH_BORG
-#define WITH_MIDACO
+//#define WITH_PAGMO
+//#define WITH_BORG
+//#define WITH_MIDACO
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -43,8 +43,6 @@ int midaco(long int*,
            double*,
            long int*,
            char*);
-}
-extern "C" {
 int midaco_print(int,
                  long int,
                  long int,
@@ -70,6 +68,8 @@ int midaco_print(int,
 }
 #endif
 #pragma GCC diagnostic pop
+
+namespace dice {
 
 #ifdef WITH_NLOPT
 static const char* get_optimization_results(const int& result_) {
@@ -103,7 +103,6 @@ static const char* get_optimization_results(const int& result_) {
 }
 #endif
 
-namespace dice {
 #ifdef WITH_BORG
 static Optimization<double, size_t>* optimization;
 #endif
@@ -133,24 +132,24 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
         std::vector<double> pf(lpf);
         x = initial_values;
 
-        printeval = 1000; /* Print-Frequency for current best solution (e.g. 1000) */
-        save2file = 0;    /* Save SCREEN and SOLUTION to TXT-files [ 0=NO/ 1=YES]  */
+        printeval = 1000;  // Print-Frequency for current best solution (e.g. 1000)
+        save2file = 0;     // Save SCREEN and SOLUTION to TXT-files [ 0=NO/ 1=YES]
 
         maxeval = 10000;
         maxtime = 60;
 
-        param[0] = 0.0;  /* ACCURACY  */
-        param[1] = 0.0;  /* SEED      */
-        param[2] = 0.0;  /* FSTOP     */
-        param[3] = 0.0;  /* ALGOSTOP  */
-        param[4] = 0.0;  /* EVALSTOP  */
-        param[5] = 0.0;  /* FOCUS     */
-        param[6] = 0.0;  /* ANTS      */
-        param[7] = 0.0;  /* KERNEL    */
-        param[8] = 0.0;  /* ORACLE    */
-        param[9] = 0.0;  /* PARETOMAX */
-        param[10] = 0.0; /* EPSILON   */
-        param[11] = 0.0; /* CHARACTER */
+        param[0] = 0.0;   // ACCURACY
+        param[1] = 0.0;   // SEED
+        param[2] = 0.0;   // FSTOP
+        param[3] = 0.0;   // ALGOSTOP
+        param[4] = 0.0;   // EVALSTOP
+        param[5] = 0.0;   // FOCUS
+        param[6] = 0.0;   // ANTS
+        param[7] = 0.0;   // KERNEL
+        param[8] = 0.0;   // ORACLE
+        param[9] = 0.0;   // PARETOMAX
+        param[10] = 0.0;  // EPSILON
+        param[11] = 0.0;  // CHARACTER
 
         Value f = 0;
         Value g = 0;
@@ -172,26 +171,39 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
             pagmo::vector_double fitness(const pagmo::vector_double& vars) const {
                 pagmo::vector_double f(optimization->objectives_num + optimization->constraints_num);
                 f[0] = -optimization->objective(&vars[0], nullptr)[0];  // TODO
-                f[1] = optimization->constraint(&vars[0], nullptr)[0];  // TODO
+                if (optimization->constraints_num > 0) {
+                    f[1] = optimization->constraint(&vars[0], nullptr)[0];  // TODO
+                }
                 return f;
-            };
+            }
             std::pair<pagmo::vector_double, pagmo::vector_double> get_bounds() const {
                 pagmo::vector_double lb(optimization->variables_num, 0);
                 pagmo::vector_double ub(optimization->variables_num, 1);
                 return {lb, ub};
-            };
+            }
+            bool has_gradient() const {
+                return true;
+            }
+            pagmo::vector_double gradient(const pagmo::vector_double& vars) const {
+                pagmo::vector_double grad(optimization->objectives_num + optimization->constraints_num);
+                optimization->objective(&vars[0], &grad[0])[0];  // TODO
+                if (optimization->constraints_num > 0) {
+                    optimization->constraint(&vars[0], nullptr)[0];  // TODO
+                }
+                return grad;
+            }
             pagmo::vector_double::size_type get_nobj() const {
                 return optimization->objectives_num;
-            };
+            }
             pagmo::vector_double::size_type get_nec() const {
                 return 0;
-            };
+            }
             pagmo::vector_double::size_type get_nic() const {
                 return optimization->constraints_num;
-            };
+            }
             pagmo::thread_safety get_thread_safety() const {
                 return pagmo::thread_safety::none;
-            };
+            }
         };
         PagmoProblem pagmo_problem;
         pagmo_problem.optimization = this;
@@ -286,7 +298,7 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
             algorithm_type = nlopt::algorithm::GD_STOGO;
         } else if (algorithm_name == "stogo_rand") {
             algorithm_type = nlopt::algorithm::GD_STOGO_RAND;
-        } else if (algorithm_name == "lbfgs-nocedal") {
+        } else if (algorithm_name == "lbfgs_nocedal") {
             algorithm_type = nlopt::algorithm::LD_LBFGS_NOCEDAL;
         } else if (algorithm_name == "lbfgs") {
             algorithm_type = nlopt::algorithm::LD_LBFGS;
@@ -310,9 +322,9 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
             algorithm_type = nlopt::algorithm::GN_MLSL;
         } else if (algorithm_name == "mlsl") {
             algorithm_type = nlopt::algorithm::GD_MLSL;
-        } else if (algorithm_name == "mlsl_lds") {
+        } else if (algorithm_name == "gn_mlsl_lds") {
             algorithm_type = nlopt::algorithm::GN_MLSL_LDS;
-        } else if (algorithm_name == "mlsl_lds") {
+        } else if (algorithm_name == "gd_mlsl_lds") {
             algorithm_type = nlopt::algorithm::GD_MLSL_LDS;
         } else if (algorithm_name == "mma") {
             algorithm_type = nlopt::algorithm::LD_MMA;
@@ -339,41 +351,7 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
         } else {
             throw std::runtime_error("unknown algorithm '" + algorithm_name + "'");
         }
-        /*
-        nlopt::opt super_opt(nlopt::LN_AUGLAG, variables_num);
-        super_opt.add_inequality_constraint(
-            [](unsigned n, const double* x, double* grad, void* data) {
-                DICE* dice = static_cast<DICE*>(data);
-                dice->s.assign(x, x + n);
-                dice->reset();
-                dice->calc_single_utility();
-                Value cca = 90;  // TODO
-                for (Time t = 0; t < dice->global.timestep_num - 1; ++t) {
-                    cca += dice->global.timestep_length * dice->emissions(t) / 3.666;
-                }
-                return cca - dice->global.fosslim;
-            },
-            this, 0.1);
-        super_opt.set_max_objective(
-            [](unsigned n, const double* x, double* grad, void* data) {
-                DICE* dice = static_cast<DICE*>(data);
-                dice->s.assign(x, x + n);
-                dice->reset();
-                return dice->calc_single_utility();
-            },
-            this);
-        super_opt.set_ftol_abs(settings["utility_precision"].as<Value>());
-        super_opt.set_lower_bounds(std::vector<Value>(variables_num, 0));
-        super_opt.set_upper_bounds(std::vector<Value>(variables_num, 1));
-        if (settings.has("maxiter")) {
-            super_opt.set_maxeval(settings["maxiter"].as<size_t>());
-        }
-        if (settings.has("timeout")) {  // timeout given in sec
-            super_opt.set_maxtime(settings["timeout"].as<size_t>());
-        }
-        //*/
 
-        //*
         nlopt::opt opt(algorithm_type, variables_num);
         if (constraints_num > 0) {  // TODO
             opt.add_inequality_constraint(
@@ -389,24 +367,7 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
                 return optimization->objective(x, grad)[0];  // TODO
             },
             this);
-        //*/
 
-        /*
-        nlopt::opt opt(nlopt::LN_BOBYQA, variables_num);
-        opt.set_max_objective(
-            [](unsigned n, const double* x, double* grad, void* data) {
-                DICE* dice = static_cast<DICE*>(data);
-                dice->s.assign(x, x + n);
-                dice->reset();
-                Value utility = dice->calc_single_utility();
-                Value cca = 90;  // TODO
-                for (Time t = 0; t < dice->global.timestep_num; ++t) {
-                    cca += dice->global.timestep_length * dice->emissions(t) / 3.666;
-                }
-                return utility - 1e5 * std::max(0.0, cca - dice->global.fosslim);
-            },
-            this);
-        //*/
         if (settings.has("utility_precision")) {
             opt.set_ftol_abs(settings["utility_precision"].as<Value>());
         }
@@ -421,8 +382,7 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
         if (settings.has("timeout")) {  // timeout given in sec
             opt.set_maxtime(settings["timeout"].as<size_t>());
         }
-        // super_opt.set_local_optimizer(opt);
-        // nlopt::result result = super_opt.optimize(initial_values, utility);
+
         Value utility;
         nlopt::result result = opt.optimize(initial_values, utility);
         std::cout << get_optimization_results(result) << std::endl;

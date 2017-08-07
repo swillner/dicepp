@@ -30,6 +30,10 @@ class DICE {
     const settings::SettingsNode& settings;
     const Global<Value, Time> global;
 
+  public:
+    Control<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>> control;
+
+  protected:
     std::vector<Economy<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>> economies;
     std::unique_ptr<climate::Climate<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>> climate;
     std::unique_ptr<damage::Damage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>> damage;
@@ -39,7 +43,6 @@ class DICE {
 
   public:
     DICE(const settings::SettingsNode& settings_p);
-    Control<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>> control;
     inline autodiff::Value<Value> calc_single_utility();
     Emissions<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>> emissions;
     void reset();

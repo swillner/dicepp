@@ -2,14 +2,14 @@ parameters:
   dK: 0.1 # Depreciation rate on capital (per year)
   elasmu: 1.45 # Elasticity of marginal utility of consumption
   expcost2: 2.8 # Exponent of control cost function
-  fosslim: 6000 # Maximum cumulative extraction fossil fuels (GtC)
+  fosslim: 1800 # Maximum cumulative extraction fossil fuels (GtC)
   gamma: 0.3 # Capital elasticity in production function
   prstp: 0.015 # Initial rate of social time preference per year
   scale1: 0.016408662 # Multiplicative scaling coefficient
   scale2: -3855.106895 # Additive scaling coefficient
   start_year: 2010
   timestep_length: 1 # 5
-  timestep_num: 91 # 400 # 91 # 19
+  timestep_num: 100 # 400 # 91 # 19
 
 regions:
   - economy:
@@ -116,17 +116,13 @@ output:
     - abatecost
     - cca
     - periodu
+    - utility
+    - gradient
 
-control_bau:
+control2:
   s:
     format: csv
-    filename: examples/original_results_bau.csv
-    column: 17
-
-2_control:
-  s:
-    format: csv
-    filename: /home/sven/Downloads/DiceResults_2013_1year.csv
+    filename: output/DiceResults_2013_1year_unconstrained.csv
     column: 17
 
 _control:
@@ -141,13 +137,20 @@ _control:
 
 optimization:
   s_fix_steps: 10
+  limit_cca: true
   iterations:
-    - library: midaco
-      timeout: 45
+    - library: nlopt
+      #algorithm: mma
+      algorithm: slsqp
+      #algorithm: lbfgs
+      #algorithm: gd_mlsl_lds
+      #algorithm: cobyla
+      #algorithm: praxis
+      timeout: 12
       maxiter: 10000
-      rel_var_precision: 0.1
-      utility_precision: 0.1
-      limit_cca: true
+      #rel_var_precision: 0.01
+      utility_precision: 0.001
+      repeat: 5
   _iterations:
     - library: nlopt
       algorithm: cobyla

@@ -9,10 +9,10 @@ CPP_FILES := $(wildcard src/*.cpp)
 OBJ_FILES := $(patsubst src/%.cpp,bin/%.o,$(CPP_FILES)) bin/borg/borg.o bin/borg/mt19937ar.o bin/midaco/midaco.o
 .SECONDARY: OBJ_FILES
 LD_FLAGS := -lstdc++ -lnetcdf_c++4 -lnetcdf -lnlopt -lipopt
-CC_FLAGS := -std=c++11 -pthread -I include -I include/climate -I include/damage -I lib/settingsnode/include -I lib/settingsnode/lib/yaml-cpp/include -I lib/cpp-library -I lib/borg  -I /usr/include/eigen3 -I /usr/include/coin/ -DHAVE_CSTDDEF
+CC_FLAGS := -std=c++11 -pthread -I include -I include/climate -I include/damage -I lib/settingsnode/include -I lib/settingsnode/lib/yaml-cpp/include -I lib/cpp-library -I lib/borg  -I /usr/include/eigen3 -I /usr/include/coin -DHAVE_CSTDDEF
 DICEPP_VERSION := $(shell git describe --tags --dirty --always | sed -e 's/v\([0-9]\+\.[0-9]\+\)\.\(0-\([0-9]\+\)\)\?\(.*\)/\1.\3\4/')
 DICEPP_FLAGS := $(GCC_WARNINGS) -DDICEPP_VERSION='"$(DICEPP_VERSION)"'
-HEADERS_REQUIRING_REBUILD := $(wildcard include/*.h) $(wildcard include/**/*.h)
+HEADERS_REQUIRING_REBUILD := $(wildcard include/*.h) $(wildcard include/**/*.h) lib/cpp-library/csv-parser.h lib/cpp-library/autodiff.h
 
 .PHONY: all fast debug gcc clean cleanall format
 

@@ -15,9 +15,9 @@ using TimeSeries = std::vector<Value>;
     if (!observer.observe(#v, [this](Time t) { return v(t); }, global.timestep_num)) { \
         return false;                                                                  \
     }
-#define OBSERVE_SERIES(v)           \
-    if (!observer.observe(#v, v)) { \
-        return false;               \
+#define OBSERVE_VARIABLE(v)                 \
+    if (!observer.observe(#v, v.value())) { \
+        return false;                       \
     }
 
 template<typename Value, typename Time, typename Constant = Value>
@@ -34,7 +34,7 @@ class Observer {
                 TimeSeries<Constant> series;
                 series.reserve(length);
                 for (Time t = 0; t < length; ++t) {
-                    series.emplace_back(Constant(v(t)));
+                    series.emplace_back(static_cast<Constant>(v(t)));
                 }
                 return observe(name, series);
             } else {
@@ -88,19 +88,6 @@ inline void debug() {
 #endif
 }
 
-template<typename Type>
-class Parameter {
-  protected:
-    Type value;
-
-  public:
-    Parameter(const std::string& name_p, const settings::SettingsNode& settings) : value(settings[name_p].as<Type>()){};
-    Parameter(const std::string& name_p, const Type& value_p) : value(value_p){};
-    operator Type() const {
-        return value;
-    }
-};
-
 template<typename Value>
 class Bounded {
   private:
@@ -116,10 +103,10 @@ class Bounded {
     }
 
   public:
-    Bounded(Value val_p, Value lower_p, Value upper_p) : val(val_p), lower(lower_p), upper(upper_p) {
+    Bounded(const Value& val_p, const Value& lower_p, const Value& upper_p) : val(val_p), lower(lower_p), upper(upper_p) {
         check();
     }
-    inline Bounded& operator=(Value val_p) {
+    inline Bounded& operator=(const Value& val_p) {
         val = val_p;
         check();
         return *this;
@@ -144,10 +131,10 @@ class LowerBounded {
     }
 
   public:
-    LowerBounded(Value val_p, Value lower_p) : val(val_p), lower(lower_p) {
+    LowerBounded(const Value& val_p, const Value& lower_p) : val(val_p), lower(lower_p) {
         check();
     }
-    inline LowerBounded& operator=(Value val_p) {
+    inline LowerBounded& operator=(const Value& val_p) {
         val = val_p;
         check();
         return *this;
@@ -171,17 +158,16 @@ class BackwardLookingTimeSeries {
 
   public:
     const Value initial_value;
-    BackwardLookingTimeSeries(Time size, Value initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p) {
-    }
-    void set_first_value(Value first_value) {
+    BackwardLookingTimeSeries(Time size, const Value& initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p){};
+    void set_first_value(const Value& first_value) {
         series[0] = first_value;
     }
-    Value get_first_value() const {
+    const Value& get_first_value() const {
         return series[0];
     }
 
     template<typename Function>
-    inline Value get(Time t, Function func) {
+    inline const Value& get(Time t, Function func) {
         if (t > largest_valid_t) {
 #ifdef DEBUG
             if (calculating_t > 0 && calculating_t <= t) {
@@ -205,7 +191,7 @@ class BackwardLookingTimeSeries {
     }
     inline void reset() {
         invalidate();
-        Value first_value = series[0];
+        const Value first_value = series[0];
         std::fill(series.begin(), series.end(), initial_value);
         series[0] = first_value;
     }
@@ -222,16 +208,16 @@ class StepwiseBackwardLookingTimeSeries {
 
   public:
     const Value initial_value;
-    StepwiseBackwardLookingTimeSeries(Time size, Value initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p){};
-    void set_first_value(Value first_value) {
+    StepwiseBackwardLookingTimeSeries(Time size, const Value& initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p){};
+    void set_first_value(const Value& first_value) {
         series[0] = first_value;
     }
-    Value get_first_value() const {
+    const Value& get_first_value() const {
         return series[0];
     }
 
     template<typename Function>
-    inline Value get(Time t, Function func) {
+    inline const Value& get(Time t, Function func) {
 #ifdef DEBUG
         if (calculating_t > 0 && calculating_t <= t && t > largest_valid_t) {
             throw std::runtime_error("equation loop");
@@ -255,7 +241,7 @@ class StepwiseBackwardLookingTimeSeries {
     }
     inline void reset() {
         invalidate();
-        Value first_value = series[0];
+        const Value first_value = series[0];
         std::fill(series.begin(), series.end(), initial_value);
         series[0] = first_value;
     }

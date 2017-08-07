@@ -84,7 +84,7 @@ class DICEClimate : public Climate<Value, Time, Constant, Variable> {
         });
     }
 
-    // Increase temperatureof lower oceans (degrees C from 1900)
+    // Increase in temperature of lower oceans (degrees C from 1900)
     Value T_ocean(Time t) {
         return T_ocean_series.get(t, [this](Time t, Value T_ocean_last) {
 
@@ -112,12 +112,7 @@ class DICEClimate : public Climate<Value, Time, Constant, Variable> {
     Value T_atm(Time t) override {
         return T_atm_series.get(t, [this](Time t, Value T_atm_last) {
 
-            const Value T_atm_t = T_atm_last + c1 * (force(t) - (fco22x / t2xco2) * T_atm_last - c3 * (T_atm_last - T_ocean(t - 1)));
-            if (T_atm_t > T_atm_upper) {
-                return T_atm_upper;
-            } else {
-                return T_atm_t;
-            }
+            return std::min(T_atm_upper, T_atm_last + c1 * (force(t) - (fco22x / t2xco2) * T_atm_last - c3 * (T_atm_last - T_ocean(t - 1))));
 
         });
     }
