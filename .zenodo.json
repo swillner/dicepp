@@ -1,0 +1,41 @@
+{
+    "description": "C++-Implementation of the DICE Dynamic Integrated Climate-Economy Model of the Economics of Global Warming",
+    "license": {
+        "id": "AGPL-3.0"
+    },
+    "title": "DICE++ v0.2.0",
+    "upload_type": "software",
+    "creators": [
+        {
+            "name": "Sven Willner",
+            "affiliation": "Potsdam Institute for Climate Impact Research",
+            "orcid": "0000-0001-6798-6247"
+        }
+    ],
+    "contributors": [
+        {
+            "name": "Nicole Glanemann",
+            "affiliation": "Potsdam Institute for Climate Impact Research",
+            "orcid": "0000-0002-0706-8310",
+            "type": "Researcher"
+        }
+    ],
+    "access_right": "open",
+    "related_identifiers": [
+        {
+            "scheme": "url",
+            "identifier": "https://github.com/swillner/dicepp/tree/v0.2.0",
+            "relation": "isSupplementTo"
+        },
+        {
+            "scheme": "url",
+            "identifier": "http://www.econ.yale.edu/~nordhaus/homepage/DICEmodels09302016.htm",
+            "relation": "references"
+        },
+        {
+            "scheme": "url",
+            "identifier": "http://cowles.yale.edu/publications/books/climate-casino-risk-uncertainty-and-economics-warming-world",
+            "relation": "references"
+        }
+    ]
+}
