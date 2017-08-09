@@ -326,7 +326,7 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
 
             CSVOutputObserver(std::ofstream& file_p) : file(file_p){};
             std::tuple<bool, bool, Time> want(const std::string& name) override {
-                return {name == var, false, t};
+                return std::tuple<bool, bool, Time>(name == var, false, t);
             }
             bool observe(const std::string& name, const autodiff::Value<Value>& v) override {
                 file << v.value();

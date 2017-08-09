@@ -28,7 +28,6 @@
 #include "Damage.h"
 #include "Economy.h"
 #include "Global.h"
-#include "config.h"
 
 namespace settings {
 class SettingsNode;

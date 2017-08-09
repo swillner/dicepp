@@ -13,7 +13,6 @@ find_package_handle_standard_args(NETCDF_CXX DEFAULT_MSG NETCDF_CXX_INCLUDE_DIR 
 
 mark_as_advanced(NETCDF_CXX_INCLUDE_DIR NETCDF_CXX_LIBRARY)
 
-# NOTE: this has been adapted from CMake's FindPNG.cmake.
 if(NETCDF_CXX_FOUND AND NOT TARGET NETCDF_CXX::netcdf_cxx)
     add_library(NETCDF_CXX::netcdf_cxx UNKNOWN IMPORTED)
     set_target_properties(NETCDF_CXX::netcdf_cxx PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${NETCDF_CXX_INCLUDE_DIR}")

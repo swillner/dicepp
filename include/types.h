@@ -64,7 +64,7 @@ class Observer {
         }
     }
     virtual std::tuple<bool, bool, Time> want(const std::string& name) {
-        return {false, false, 0};
+        return std::tuple<bool, bool, Time>(false, false, 0);
     }
     virtual bool observe(const std::string& name, TimeSeries<Constant>& v) = 0;
     virtual bool observe(const std::string& name, const Value& v) {

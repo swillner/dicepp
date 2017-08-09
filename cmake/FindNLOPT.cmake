@@ -1,7 +1,6 @@
-# from https://github.com/esa/pagmo2/blob/master/cmake_modules/FindNLOPT.cmake
+# adapted from https://github.com/esa/pagmo2/blob/master/cmake_modules/FindNLOPT.cmake
 
 if(NLOPT_INCLUDE_DIR AND NLOPT_LIBRARY)
-    # Already in cache, be silent
     set(NLOPT_FIND_QUIETLY TRUE)
 endif()
 
@@ -14,7 +13,6 @@ find_package_handle_standard_args(NLOPT DEFAULT_MSG NLOPT_INCLUDE_DIR NLOPT_LIBR
 
 mark_as_advanced(NLOPT_INCLUDE_DIR NLOPT_LIBRARY)
 
-# NOTE: this has been adapted from CMake's FindPNG.cmake.
 if(NLOPT_FOUND AND NOT TARGET NLOPT::nlopt)
     add_library(NLOPT::nlopt UNKNOWN IMPORTED)
     set_target_properties(NLOPT::nlopt PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${NLOPT_INCLUDE_DIR}")

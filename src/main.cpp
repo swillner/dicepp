@@ -22,7 +22,6 @@
 #include <iostream>
 #include <stdexcept>
 #include "DICE.h"
-#include "config.h"
 #include "settingsnode.h"
 
 using Time = size_t;
@@ -30,12 +29,16 @@ using Value = double;
 
 static void print_usage(const char* program_name) {
     std::cerr << "DICE++\n"
+                 "   C++-Implementation of the DICE Dynamic Integrated Climate-Economy\n"
+                 "   Model of the Economics of Global Warming by W. Nordhaus as described in:\n\n"
+                 "   Nordhaus, William D. The Climate Casino: Risk, Uncertainty, and Economics\n"
+                 "   for a Warming World. Yale University Press (2013).\n\n"
                  "Version:  " DICEPP_VERSION
                  "\n"
                  "Author:   Sven Willner <sven.willner@pik-potsdam.de>\n\n"
                  "Source:   https://github.com/swillner/dicepp\n"
                  "License:  AGPL, (c) 2017 Sven Willner (see LICENSE file)\n\n"
-                 "Usage: "
+                 "Usage:    "
               << program_name
               << " (<option> | <settingsfile>)\n"
                  "Options:\n"

@@ -19,7 +19,6 @@
 
 #include "Optimization.h"
 #include "DICE.h"
-#include "config.h"
 #include "settingsnode.h"
 
 #pragma GCC diagnostic push
