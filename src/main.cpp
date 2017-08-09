@@ -22,6 +22,7 @@
 #include <iostream>
 #include <stdexcept>
 #include "DICE.h"
+#include "config.h"
 #include "settingsnode.h"
 
 using Time = size_t;

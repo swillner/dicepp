@@ -1,0 +1,81 @@
+cmake_minimum_required(VERSION 2.8)
+if(${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 3.8)
+  cmake_policy(SET CMP0069 NEW) # for INTERPROCEDURAL_OPTIMIZATION
+endif()
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
+endif()
+
+set(DICEPP_VERSION 1.0)
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
+  find_program(HAVE_GIT git)
+  if(HAVE_GIT)
+    execute_process(COMMAND git describe --tags --dirty --always OUTPUT_VARIABLE GIT_OUTPUT)
+    string(STRIP ${GIT_OUTPUT} GIT_OUTPUT)
+    string(REGEX REPLACE "^v([0-9]+\\.[0-9]+)\\.(0-)?([0-9]*)((-.+)?)$" "\\1.\\3\\4" DICEPP_VERSION ${GIT_OUTPUT})
+  endif()
+  mark_as_advanced(FORCE HAVE_GIT)
+endif()
+
+message(STATUS "Program version: ${DICEPP_VERSION}")
+project(dicepp)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+
+file(GLOB_RECURSE DICEPP_SOURCES src/*.cpp)
+add_executable(dicepp ${DICEPP_SOURCES})
+include_directories(include include/climate include/damage lib/cpp-library lib/settingsnode/include lib/settingsnode/lib/yaml-cpp/include ${CMAKE_CURRENT_BINARY_DIR}/include)
+
+set(DICEPP_CXX_FLAGS "-std=c++11")
+list(APPEND DICEPP_CXX_FLAGS_DEBUG ${DICEPP_CXX_FLAGS})
+list(APPEND DICEPP_CXX_FLAGS_RELEASE ${DICEPP_CXX_FLAGS})
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  if(${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 3.8)
+    message(STATUS "Enabling interprocedural optimization")
+    set_property(TARGET dicepp PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+  endif()
+endif()
+
+option(DICEPP_WITH_NLOPT "NLopt" ON)
+if(DICEPP_WITH_NLOPT)
+  find_package(NLOPT REQUIRED)
+  message(STATUS "NLopt include directory: ${NLOPT_INCLUDE_DIR}")
+  message(STATUS "NLopt library: ${NLOPT_LIBRARY}")
+  target_link_libraries(dicepp NLOPT::nlopt)
+  set(DICEPP_ENABLE_NLOPT "#define DICEPP_WITH_NLOPT")
+endif()
+
+option(DICEPP_WITH_NETCDF "NetCDF" ON)
+if(DICEPP_WITH_NETCDF)
+  find_package(NETCDF REQUIRED)
+  message(STATUS "NetCDF include directory: ${NETCDF_INCLUDE_DIR}")
+  message(STATUS "NetCDF library: ${NETCDF_LIBRARY}")
+  target_link_libraries(dicepp NETCDF::netcdf)
+
+  find_package(NETCDF_CXX REQUIRED)
+  message(STATUS "NetCDF_cxx include directory: ${NETCDF_INCLUDE_DIR}")
+  message(STATUS "NetCDF_cxx library: ${NETCDF_LIBRARY}")
+  target_link_libraries(dicepp NETCDF_CXX::netcdf_cxx)
+
+  set(DICEPP_ENABLE_NETCDF "#define DICEPP_WITH_NETCDF")
+endif()
+
+set(APPLE_UNIVERSAL_BIN OFF CACHE INTERNAL "")
+set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
+set(MSVC_SHARED_RT ON CACHE INTERNAL "")
+set(MSVC_STHREADED_RT OFF CACHE INTERNAL "")
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE INTERNAL "")
+set(YAML_CPP_BUILD_TOOLS OFF CACHE INTERNAL "")
+set(gmock_build_tests OFF CACHE INTERNAL "")
+set(gtest_build_samples OFF CACHE INTERNAL "")
+set(gtest_build_tests OFF CACHE INTERNAL "")
+set(gtest_disable_pthreads OFF CACHE INTERNAL "")
+set(gtest_force_shared_crt OFF CACHE INTERNAL "")
+add_subdirectory(lib/settingsnode/lib/yaml-cpp ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp EXCLUDE_FROM_ALL)
+add_dependencies(dicepp yaml-cpp)
+target_link_libraries(dicepp ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp/libyaml-cpp.a)
+
+configure_file(${CMAKE_SOURCE_DIR}/cmake/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)

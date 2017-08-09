@@ -19,27 +19,23 @@
 
 #include "Optimization.h"
 #include "DICE.h"
+#include "config.h"
 #include "settingsnode.h"
-
-#define WITH_NLOPT
-//#define WITH_PAGMO
-//#define WITH_BORG
-//#define WITH_MIDACO
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 #pragma GCC diagnostic ignored "-Wfloat-equal"
-#ifdef WITH_NLOPT
+#ifdef DICEPP_WITH_NLOPT
 #include <nlopt.hpp>
 #endif
-#ifdef WITH_PAGMO
+#ifdef DICEPP_WITH_PAGMO
 #include <pagmo/pagmo.hpp>
 #endif
-#ifdef WITH_BORG
+#ifdef DICEPP_WITH_BORG
 #include "borg.h"
 #endif
-#ifdef WITH_MIDACO
+#ifdef DICEPP_WITH_MIDACO
 extern "C" {
 int midaco(long int*,
            long int*,
@@ -90,7 +86,7 @@ int midaco_print(int,
 
 namespace dice {
 
-#ifdef WITH_NLOPT
+#ifdef DICEPP_WITH_NLOPT
 static const char* get_optimization_results(const int& result_) {
     switch (result_) {
         case 1:
@@ -122,15 +118,15 @@ static const char* get_optimization_results(const int& result_) {
 }
 #endif
 
-#ifdef WITH_BORG
+#ifdef DICEPP_WITH_BORG
 static Optimization<double, size_t>* optimization;
 #endif
 
 template<typename Value, typename Time>
 void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings, TimeSeries<Value>& initial_values) {
     const std::string& library = settings["library"].as<std::string>();
-#ifdef WITH_MIDACO
     if (library == "midaco") {
+#ifdef DICEPP_WITH_MIDACO
         long int o, n, ni, m, me, maxeval, maxtime, printeval, save2file, iflag = 0, istop = 0;
         std::vector<double> x(initial_values), xl(variables_num, 0), xu(variables_num, 1), param(12);
         char key[] = "MIDACO_LIMITED_VERSION___[CREATIVE_COMMONS_BY-NC-ND_LICENSE]";
@@ -181,10 +177,11 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
             midaco_print(2, printeval, save2file, &iflag, &istop, &f, &g, &x[0], &xl[0], &xu[0], o, n, ni, m, me, &rw[0], &pf[0], maxeval, maxtime, &param[0],
                          p, key);
         }
-    } else
+#else
+        throw std::runtime_error("library '" + library + "' not supported by this binary");
 #endif
-#ifdef WITH_PAGMO
-        if (library == "pagmo") {
+    } else if (library == "pagmo") {
+#ifdef DICEPP_WITH_PAGMO
         struct PagmoProblem {
             Optimization<Value, Time>* optimization;
             pagmo::vector_double fitness(const pagmo::vector_double& vars) const {
@@ -261,10 +258,11 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
         }
         pagmo::vector_double vars = population.champion_x();
         objective(&vars[0], nullptr);
-    } else
+#else
+        throw std::runtime_error("library '" + library + "' not supported by this binary");
 #endif
-#ifdef WITH_BORG
-        if (library == "borg") {
+    } else if (library == "borg") {
+#ifdef DICEPP_WITH_BORG
         optimization = this;
         BORG_Problem opt = BORG_Problem_create(variables_num, objectives_num, constraints_num, [](double* vars, double* objs, double* consts) {
             const std::vector<Value> o = optimization->objective(vars, nullptr);
@@ -287,10 +285,11 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
         // BORG_Archive_print(result, stdout);
         BORG_Archive_destroy(result);
         BORG_Problem_destroy(opt);
-    } else
+#else
+        throw std::runtime_error("library '" + library + "' not supported by this binary");
 #endif
-#ifdef WITH_NLOPT
-        if (library == "nlopt") {
+    } else if (library == "nlopt") {
+#ifdef DICEPP_WITH_NLOPT
         // "auglag nlopt::algorithm::LN_AUGLAG
         // "auglag nlopt::algorithm::LD_AUGLAG
         // "auglag_eq nlopt::algorithm::LN_AUGLAG_EQ
@@ -405,9 +404,10 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
         Value utility;
         nlopt::result result = opt.optimize(initial_values, utility);
         std::cout << get_optimization_results(result) << std::endl;
-    } else
+#else
+        throw std::runtime_error("library '" + library + "' not supported by this binary");
 #endif
-    {
+    } else {
         throw std::runtime_error("unknown library '" + library + "'");
     }
 }

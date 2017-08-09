@@ -28,6 +28,7 @@
 #include "Damage.h"
 #include "Economy.h"
 #include "Global.h"
+#include "config.h"
 
 namespace settings {
 class SettingsNode;
@@ -57,7 +58,9 @@ class DICE {
     std::unique_ptr<climate::Climate<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>> climate;
     std::unique_ptr<damage::Damage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>> damage;
 
+#ifdef DICEPP_WITH_NETCDF
     void write_netcdf_output(const settings::SettingsNode& output_node);
+#endif
     void write_csv_output(const settings::SettingsNode& output_node);
 
   public:

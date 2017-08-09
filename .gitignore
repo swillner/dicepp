@@ -5,5 +5,5 @@ GTAGS
 /dice
 /output
 /*.nc
-/bin
 /lib/midaco
+/build

@@ -18,9 +18,6 @@
 */
 
 #include "DICE.h"
-#include <ncDim.h>
-#include <ncFile.h>
-#include <ncVar.h>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -32,6 +29,12 @@
 #include "Optimization.h"
 #include "csv-parser.h"
 #include "settingsnode.h"
+
+#ifdef DICEPP_WITH_NETCDF
+#include <ncDim.h>
+#include <ncFile.h>
+#include <ncVar.h>
+#endif
 
 namespace dice {
 
@@ -247,7 +250,11 @@ void DICE<Value, Time>::output() {
         const settings::SettingsNode& output_node = settings["output"];
         const std::string& type = output_node["type"].as<std::string>();
         if (type == "netcdf") {
+#ifdef DICEPP_WITH_NETCDF
             write_netcdf_output(output_node);
+#else
+            throw std::runtime_error("output type '" + type + "' not supported by this binary");
+#endif
         } else if (type == "csv") {
             write_csv_output(output_node);
         } else {
@@ -256,6 +263,7 @@ void DICE<Value, Time>::output() {
     }
 }
 
+#ifdef DICEPP_WITH_NETCDF
 template<typename Value, typename Time>
 void DICE<Value, Time>::write_netcdf_output(const settings::SettingsNode& output_node) {
     if (economies.size() == 1) {
@@ -297,6 +305,7 @@ void DICE<Value, Time>::write_netcdf_output(const settings::SettingsNode& output
         throw std::runtime_error("multiple regions not supported yet");
     }
 }
+#endif
 
 template<typename Value, typename Time>
 void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_node) {
