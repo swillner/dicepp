@@ -40,34 +40,35 @@ class Economy {
     climate::Climate<Value, Time, Constant, Variable>& climate;
     damage::Damage<Value, Time, Constant, Variable>& damage;
 
-    const Constant C_lower{settings["C_lower"].as<Constant>()};
-    const Constant C_pc_lower{settings["C_pc_lower"].as<Constant>()};
-    const Constant E0{settings["E0"].as<Constant>()};                          // Industrial emissions 2010 (GtCO2 per year)
-    const Constant E_land0{settings["E_land0"].as<Constant>()};                // Carbon emissions from land 2010 (GtCO2 per year)
-    const Constant cprice0{settings["cprice0"].as<Constant>()};                // Initial base carbon price (2005$ per tCO2)
-    const Constant dE_land{settings["dE_land"].as<Constant>()};                // Decline rate of land emissions (per 5 years)
-    const Constant dA{settings["dA"].as<Constant>()};                          // Decline rate of TFP per 5 years
-    const Constant dsig{settings["dsig"].as<Constant>()};                      // Decline rate of decarbonization (per period)
-    const Constant gA0{settings["gA0"].as<Constant>()};                        // Initial growth rate for TFP per year
-    const Constant gback{settings["gback"].as<Constant>()};                    // Initial cost decline backstop cost 5 years
-    const Constant gcprice{settings["gcprice"].as<Constant>()};                // Growth rate of base carbon price per year
-    const Constant gsigma1{settings["gsigma1"].as<Constant>()};                // Initial growth of sigma (per year)
-    const Constant lim_mu{settings["lim_mu"].as<Constant>()};                  // Upper limit on control rate after 2150
-    const Constant mu0{settings["mu0"].as<Constant>()};                        // Initial emissions control rate for base case 2010
-    const Constant partfract2010{settings["partfract2010"].as<Constant>()};    // Fraction of emissions under control in 2010
-    const Constant partfractfull{settings["partfractfull"].as<Constant>()};    // Fraction of emissions under control at full time
-    const Constant pback{settings["pback"].as<Constant>()};                    // Cost of backstop 2005$ per tCO2 2010
-    const Constant periodfullpart{settings["periodfullpart"].as<Constant>()};  // Period at which have full participation
-    const Constant pop_adj{settings["pop_adj"].as<Constant>()};                // Growth rate to calibrate to 2050 pop projection
-    const Constant pop_asym{settings["pop_asym"].as<Constant>()};              // Asymptotic population (millions)
-    const Constant Q0{settings["Q0"].as<Constant>()};                          // Initial gross output (trill 2005 USD)
-    const Constant tnopol{settings["tnopol"].as<Constant>()};                  // Period before which no emissions controls base
+    const Constant C_lower{settings["C_lower"].template as<Constant>()};
+    const Constant C_pc_lower{settings["C_pc_lower"].template as<Constant>()};
+    const Constant E0{settings["E0"].template as<Constant>()};                          // Industrial emissions 2010 (GtCO2 per year)
+    const Constant E_land0{settings["E_land0"].template as<Constant>()};                // Carbon emissions from land 2010 (GtCO2 per year)
+    const Constant cprice0{settings["cprice0"].template as<Constant>()};                // Initial base carbon price (2005$ per tCO2)
+    const Constant dE_land{settings["dE_land"].template as<Constant>()};                // Decline rate of land emissions (per 5 years)
+    const Constant dA{settings["dA"].template as<Constant>()};                          // Decline rate of TFP per 5 years
+    const Constant dsig{settings["dsig"].template as<Constant>()};                      // Decline rate of decarbonization (per period)
+    const Constant gA0{settings["gA0"].template as<Constant>()};                        // Initial growth rate for TFP per year
+    const Constant gback{settings["gback"].template as<Constant>()};                    // Initial cost decline backstop cost 5 years
+    const Constant gcprice{settings["gcprice"].template as<Constant>()};                // Growth rate of base carbon price per year
+    const Constant gsigma1{settings["gsigma1"].template as<Constant>()};                // Initial growth of sigma (per year)
+    const Constant lim_mu{settings["lim_mu"].template as<Constant>()};                  // Upper limit on control rate after 2150
+    const Constant mu0{settings["mu0"].template as<Constant>()};                        // Initial emissions control rate for base case 2010
+    const Constant partfract2010{settings["partfract2010"].template as<Constant>()};    // Fraction of emissions under control in 2010
+    const Constant partfractfull{settings["partfractfull"].template as<Constant>()};    // Fraction of emissions under control at full time
+    const Constant pback{settings["pback"].template as<Constant>()};                    // Cost of backstop 2005$ per tCO2 2010
+    const Constant periodfullpart{settings["periodfullpart"].template as<Constant>()};  // Period at which have full participation
+    const Constant pop_adj{settings["pop_adj"].template as<Constant>()};                // Growth rate to calibrate to 2050 pop projection
+    const Constant pop_asym{settings["pop_asym"].template as<Constant>()};              // Asymptotic population (millions)
+    const Constant Q0{settings["Q0"].template as<Constant>()};                          // Initial gross output (trill 2005 USD)
+    const Constant tnopol{settings["tnopol"].template as<Constant>()};                  // Period before which no emissions controls base
 
-    StepwiseBackwardLookingTimeSeries<Constant, Time> L_series{global.timestep_num, settings["L0"].as<Constant>()};
-    StepwiseBackwardLookingTimeSeries<Constant, Time> A_series{global.timestep_num, settings["A0"].as<Constant>()};
+    StepwiseBackwardLookingTimeSeries<Constant, Time> L_series{global.timestep_num, settings["L0"].template as<Constant>()};
+    StepwiseBackwardLookingTimeSeries<Constant, Time> A_series{global.timestep_num, settings["A0"].template as<Constant>()};
     StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> K_series{
-        global.timestep_num, {{control.variables_num, settings["K0"].as<Constant>()}, {control.variables_num, settings["K_lower"].as<Constant>()}}};
-    StepwiseBackwardLookingTimeSeries<Value, Time> cca_series{global.timestep_num, {control.variables_num, settings["cca0"].as<Constant>()}};
+        global.timestep_num,
+        {{control.variables_num, settings["K0"].template as<Constant>()}, {control.variables_num, settings["K_lower"].template as<Constant>()}}};
+    StepwiseBackwardLookingTimeSeries<Value, Time> cca_series{global.timestep_num, {control.variables_num, settings["cca0"].template as<Constant>()}};
 
   public:
     Economy(const settings::SettingsNode& settings_p,

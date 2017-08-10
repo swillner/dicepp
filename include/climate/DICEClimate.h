@@ -36,19 +36,19 @@ class DICEClimate : public Climate<Value, Time, Constant, Variable> {
     using Climate<Value, Time, Constant, Variable>::E;  // Total CO2 emissions (GtCO2 per year)
     const settings::SettingsNode& settings;
 
-    const Constant b12{settings["b12"].as<Constant>()};            // Carbon cycle transition matrix
-    const Constant b23{settings["b23"].as<Constant>()};            // Carbon cycle transition matrix
-    const Constant c1{settings["c1"].as<Constant>()};              // Climate equation coefficient for upper level
-    const Constant c3{settings["c3"].as<Constant>()};              // Transfer coefficient upper to lower stratum
-    const Constant c4{settings["c4"].as<Constant>()};              // Transfer coefficient for lower level
-    const Constant fco22x{settings["fco22x"].as<Constant>()};      // Forcings of equilibrium CO2 doubling (Wm-2)
-    const Constant fex0{settings["fex0"].as<Constant>()};          // 2010 forcings of non-CO2 GHG (Wm-2)
-    const Constant fex1{settings["fex1"].as<Constant>()};          // 2100 forcings of non-CO2 GHG (Wm-2)
-    const Constant M_atm_eq{settings["M_atm_eq"].as<Constant>()};  // Equilibrium concentration atmosphere  (GtC)
-    const Constant M_l_eq{settings["M_l_eq"].as<Constant>()};      // Equilibrium concentration in lower strata (GtC)
-    const Constant M_u_eq{settings["M_u_eq"].as<Constant>()};      // Equilibrium concentration in upper strata (GtC)
-    const Constant t2xco2{settings["t2xco2"].as<Constant>()};      // Equilibrium temp impact (oC per doubling CO2)
-    const Value T_atm_upper{control.variables_num, settings["T_atm_upper"].as<Constant>()};
+    const Constant b12{settings["b12"].template as<Constant>()};            // Carbon cycle transition matrix
+    const Constant b23{settings["b23"].template as<Constant>()};            // Carbon cycle transition matrix
+    const Constant c1{settings["c1"].template as<Constant>()};              // Climate equation coefficient for upper level
+    const Constant c3{settings["c3"].template as<Constant>()};              // Transfer coefficient upper to lower stratum
+    const Constant c4{settings["c4"].template as<Constant>()};              // Transfer coefficient for lower level
+    const Constant fco22x{settings["fco22x"].template as<Constant>()};      // Forcings of equilibrium CO2 doubling (Wm-2)
+    const Constant fex0{settings["fex0"].template as<Constant>()};          // 2010 forcings of non-CO2 GHG (Wm-2)
+    const Constant fex1{settings["fex1"].template as<Constant>()};          // 2100 forcings of non-CO2 GHG (Wm-2)
+    const Constant M_atm_eq{settings["M_atm_eq"].template as<Constant>()};  // Equilibrium concentration atmosphere  (GtC)
+    const Constant M_l_eq{settings["M_l_eq"].template as<Constant>()};      // Equilibrium concentration in lower strata (GtC)
+    const Constant M_u_eq{settings["M_u_eq"].template as<Constant>()};      // Equilibrium concentration in upper strata (GtC)
+    const Constant t2xco2{settings["t2xco2"].template as<Constant>()};      // Equilibrium temp impact (oC per doubling CO2)
+    const Value T_atm_upper{control.variables_num, settings["T_atm_upper"].template as<Constant>()};
 
     // Carbon cycle transition matrix
     Constant b11 = 1 - b12;
@@ -58,16 +58,19 @@ class DICEClimate : public Climate<Value, Time, Constant, Variable> {
     Constant b33 = 1 - b32;
 
     StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> M_atm_series{
-        global.timestep_num, {{control.variables_num, settings["M_atm0"].as<Constant>()}, {control.variables_num, settings["M_atm_lower"].as<Constant>()}}};
+        global.timestep_num,
+        {{control.variables_num, settings["M_atm0"].template as<Constant>()}, {control.variables_num, settings["M_atm_lower"].template as<Constant>()}}};
     StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> M_l_series{
-        global.timestep_num, {{control.variables_num, settings["M_l0"].as<Constant>()}, {control.variables_num, settings["M_l_lower"].as<Constant>()}}};
+        global.timestep_num,
+        {{control.variables_num, settings["M_l0"].template as<Constant>()}, {control.variables_num, settings["M_l_lower"].template as<Constant>()}}};
     StepwiseBackwardLookingTimeSeries<LowerBounded<Value>, Time> M_u_series{
-        global.timestep_num, {{control.variables_num, settings["M_u0"].as<Constant>()}, {control.variables_num, settings["M_u_lower"].as<Constant>()}}};
+        global.timestep_num,
+        {{control.variables_num, settings["M_u0"].template as<Constant>()}, {control.variables_num, settings["M_u_lower"].template as<Constant>()}}};
     StepwiseBackwardLookingTimeSeries<Bounded<Value>, Time> T_ocean_series{global.timestep_num,
-                                                                           {{control.variables_num, settings["T_ocean0"].as<Constant>()},
-                                                                            {control.variables_num, settings["T_ocean_lower"].as<Constant>()},
-                                                                            {control.variables_num, settings["T_ocean_upper"].as<Constant>()}}};
-    StepwiseBackwardLookingTimeSeries<Value, Time> T_atm_series{global.timestep_num, {control.variables_num, settings["T_atm0"].as<Constant>()}};
+                                                                           {{control.variables_num, settings["T_ocean0"].template as<Constant>()},
+                                                                            {control.variables_num, settings["T_ocean_lower"].template as<Constant>()},
+                                                                            {control.variables_num, settings["T_ocean_upper"].template as<Constant>()}}};
+    StepwiseBackwardLookingTimeSeries<Value, Time> T_atm_series{global.timestep_num, {control.variables_num, settings["T_atm0"].template as<Constant>()}};
 
   public:
     DICEClimate(const settings::SettingsNode& settings_p,

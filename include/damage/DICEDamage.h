@@ -33,9 +33,9 @@ class DICEDamage : public Damage<Value, Time, Constant, Variable> {
     using Damage<Value, Time, Constant, Variable>::climate;
     const settings::SettingsNode& settings;
 
-    const Constant a1{settings["a1"].as<Constant>()};  // Damage intercept
-    const Constant a2{settings["a2"].as<Constant>()};  // Damage quadratic term
-    const Constant a3{settings["a3"].as<Constant>()};  // Damage exponent
+    const Constant a1{settings["a1"].template as<Constant>()};  // Damage intercept
+    const Constant a2{settings["a2"].template as<Constant>()};  // Damage quadratic term
+    const Constant a3{settings["a3"].template as<Constant>()};  // Damage exponent
 
   public:
     DICEDamage(const settings::SettingsNode& settings_p, const Global<Constant, Time>& global_p, climate::Climate<Value, Time, Constant, Variable>& climate_p)
