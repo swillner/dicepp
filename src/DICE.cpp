@@ -134,6 +134,29 @@ void DICE<Value, Time>::initialize() {
 }
 
 template<typename Value, typename Time>
+void DICE<Value, Time>::single_optimization(Optimization<Value, Time>& optimization,
+                                            const settings::SettingsNode& optimization_node,
+                                            TimeSeries<Value>& initial_values,
+                                            bool verbose) {
+    for (const auto& iteration_node : optimization_node["iterations"].as_sequence()) {
+        for (size_t i = 0; i < iteration_node["repeat"].as<size_t>(1); ++i) {
+            std::copy(std::begin(control.s.value()), std::begin(control.s.value()) + initial_values.size(), std::begin(initial_values));
+            optimization.optimize(iteration_node, initial_values, verbose);
+            if (verbose) {
+                reset();
+                const autodiff::Value<Value> utility = calc_single_utility();
+                Value sum = 0;
+                for (size_t i = 0; i < initial_values.size(); ++i) {
+                    sum += utility.derivative()[i] * utility.derivative()[i];
+                }
+                std::cout << "Gradient length = " << std::sqrt(sum) << std::endl;
+                std::cout << "Finished with utility = " << utility.value() << std::endl;
+            }
+        }
+    }
+}
+
+template<typename Value, typename Time>
 void DICE<Value, Time>::run() {
     if (economies.size() == 0) {
         throw std::runtime_error("no economies given");
@@ -156,7 +179,7 @@ void DICE<Value, Time>::run() {
 #ifdef DEBUG
                     try {
 #endif
-                        dice.control.s.value().assign(vars, vars + variables_num);
+                        std::copy(vars, vars + variables_num, std::begin(dice.control.s.value()));
                         dice.reset();
                         const autodiff::Value<Value> utility = dice.calc_single_utility();
                         if (grad) {
@@ -175,7 +198,7 @@ void DICE<Value, Time>::run() {
 #ifdef DEBUG
                     try {
 #endif
-                        dice.control.s.value().assign(vars, vars + variables_num);
+                        std::copy(vars, vars + variables_num, std::begin(dice.control.s.value()));
                         dice.reset();
                         const autodiff::Value<Value> c = dice.economies[0].cca(dice.global.timestep_num - 1) - dice.global.fosslim;
                         if (grad) {
@@ -193,22 +216,28 @@ void DICE<Value, Time>::run() {
 
             const size_t optimization_variables_num = global.timestep_num - optimization_node["s_fix_steps"].as<Time>(0);
             const size_t constraints_num = optimization_node["limit_cca"].as<bool>() ? 1 : 0;
+            const bool verbose = optimization_node["verbose"].as<bool>();
             DICEOptimization optimization{optimization_variables_num, 1, constraints_num, *this};
             std::fill(std::begin(control.s.value()), std::end(control.s.value()), global.optlrsav);
             TimeSeries<Value> initial_values(optimization_variables_num, 0);
-            for (const auto& iteration_node : optimization_node["iterations"].as_sequence()) {
-                for (size_t i = 0; i < iteration_node["repeat"].as<size_t>(1); ++i) {
-                    initial_values.assign(std::begin(control.s.value()), std::begin(control.s.value()) + optimization_variables_num);
-                    optimization.optimize(iteration_node, initial_values);
-                    reset();
-                    const autodiff::Value<Value> utility = calc_single_utility();
-                    Value sum = 0;
-                    for (size_t i = 0; i < optimization_variables_num; ++i) {
-                        sum += utility.derivative()[i] * utility.derivative()[i];
-                    }
-                    std::cout << "Gradient length = " << std::sqrt(sum) << std::endl;
-                    std::cout << "Finished with utility = " << utility.value() << std::endl;
-                }
+
+            const settings::SettingsNode& damage_node = settings["damage"];
+            const std::string& type = damage_node["type"].as<std::string>();
+            if (type == "burke") {
+                auto& burke_damage = *static_cast<damage::BurkeDamage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>*>(damage.get());
+                auto& economy = economies[0];
+                const Value iterstop = optimization_node["iterstop"].as<Value>();
+                Value phi_diff = 1;
+                single_optimization(optimization, optimization_node, initial_values, verbose);
+                TimeSeries<Value> s_fix(control.s.value());
+                //std::cout << s_fix << std::endl;
+                while (phi_diff > iterstop) {
+                    std::cout << "iterstop = " << iterstop << " < phi_diff = " << phi_diff << std::endl;
+                    burke_damage.recalc_f(economy, s_fix);
+                    single_optimization(optimization, optimization_node, initial_values, verbose);
+                    phi_diff = burke_damage.phi_diff(economy, s_fix);
+            } else {
+                single_optimization(optimization, optimization_node, initial_values, verbose);
             }
         } else {
             const size_t optimization_variables_num = global.timestep_num - 10;
