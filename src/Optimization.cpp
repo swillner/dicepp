@@ -122,7 +122,7 @@ static Optimization<double, size_t>* optimization;
 #endif
 
 template<typename Value, typename Time>
-void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings, TimeSeries<Value>& initial_values) {
+void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings, TimeSeries<Value>& initial_values, bool verbose) {
     const std::string& library = settings["library"].as<std::string>();
     if (library == "midaco") {
 #ifdef DICEPP_WITH_MIDACO
@@ -402,7 +402,9 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
 
         Value utility;
         nlopt::result result = opt.optimize(initial_values, utility);
-        std::cout << get_optimization_results(result) << std::endl;
+        if (verbose) {
+            std::cout << get_optimization_results(result) << std::endl;
+        }
 #else
         throw std::runtime_error("library '" + library + "' not supported by this binary");
 #endif
