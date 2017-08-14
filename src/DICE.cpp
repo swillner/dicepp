@@ -221,24 +221,7 @@ void DICE<Value, Time>::run() {
             std::fill(std::begin(control.s.value()), std::end(control.s.value()), global.optlrsav);
             TimeSeries<Value> initial_values(optimization_variables_num, 0);
 
-            const settings::SettingsNode& damage_node = settings["damage"];
-            const std::string& type = damage_node["type"].as<std::string>();
-            if (type == "burke") {
-                auto& burke_damage = *static_cast<damage::BurkeDamage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>*>(damage.get());
-                auto& economy = economies[0];
-                const Value iterstop = optimization_node["iterstop"].as<Value>();
-                Value phi_diff = 1;
-                single_optimization(optimization, optimization_node, initial_values, verbose);
-                TimeSeries<Value> s_fix(control.s.value());
-                //std::cout << s_fix << std::endl;
-                while (phi_diff > iterstop) {
-                    std::cout << "iterstop = " << iterstop << " < phi_diff = " << phi_diff << std::endl;
-                    burke_damage.recalc_f(economy, s_fix);
-                    single_optimization(optimization, optimization_node, initial_values, verbose);
-                    phi_diff = burke_damage.phi_diff(economy, s_fix);
-            } else {
-                single_optimization(optimization, optimization_node, initial_values, verbose);
-            }
+            single_optimization(optimization, optimization_node, initial_values, verbose);
         } else {
             const size_t optimization_variables_num = global.timestep_num - 10;
             const autodiff::Value<Value> utility = calc_single_utility();
