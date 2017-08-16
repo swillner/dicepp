@@ -102,7 +102,7 @@ void DICE<Value, Time>::initialize() {
             const settings::SettingsNode& input_node;
 
           public:
-            ControlInputObserver(const settings::SettingsNode& input_node_p) : input_node(input_node_p){};
+            explicit ControlInputObserver(const settings::SettingsNode& input_node_p) : input_node(input_node_p){};
             bool observe(const std::string& name, TimeSeries<Value>& v) override {
                 if (input_node.has(name)) {
                     const settings::SettingsNode& node = input_node[name];
@@ -168,7 +168,7 @@ void DICE<Value, Time>::single_optimization(Optimization<Value, Time>& optimizat
 
 template<typename Value, typename Time>
 void DICE<Value, Time>::run() {
-    if (economies.size() == 0) {
+    if (economies.empty()) {
         throw std::runtime_error("no economies given");
     }
     if (economies.size() == 1) {
@@ -331,7 +331,7 @@ void DICE<Value, Time>::write_netcdf_output(const settings::SettingsNode& output
         netCDF::NcVar time_var = file.addVar("time", netCDF::NcType::nc_UINT, {time_dim});
         for (Time t = 0; t < global.timestep_num; ++t) {
             const Time year = global.start_year + t * global.timestep_length;
-            time_var.putVar({t}, (const unsigned int)year);
+            time_var.putVar({t}, static_cast<const unsigned int>(year));
         }
         class NetCDFOutputObserver : public Observer<autodiff::Value<Value>, Time, Value> {
           protected:
@@ -343,6 +343,7 @@ void DICE<Value, Time>::write_netcdf_output(const settings::SettingsNode& output
             NetCDFOutputObserver(const netCDF::NcGroup& group_p, const netCDF::NcDim& time_dim_p, const settings::SettingsNode& output_node_p)
                 : group(group_p), time_dim(time_dim_p), output_node(output_node_p){};
             std::tuple<bool, bool, Time> want(const std::string& name) override {
+                (void)name;
                 return {true, true, 0};
             }
             bool observe(const std::string& name, TimeSeries<Value>& v) override {
@@ -382,15 +383,17 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
             Time t;
             std::string var;
 
-            CSVOutputObserver(std::ofstream& file_p) : file(file_p){};
+            explicit CSVOutputObserver(std::ofstream& file_p) : file(file_p){};
             std::tuple<bool, bool, Time> want(const std::string& name) override {
                 return std::tuple<bool, bool, Time>(name == var, false, t);
             }
             bool observe(const std::string& name, const autodiff::Value<Value>& v) override {
+                (void)name;
                 file << v.value();
                 return false;
             }
             bool observe(const std::string& name, const Value& v) override {
+                (void)name;
                 file << v;
                 return false;
             }
@@ -398,9 +401,8 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
                 if (name == var) {
                     file << v[t];
                     return false;
-                } else {
-                    return true;
                 }
+                return true;
             }
         };
         const auto& variables = output_node["columns"].as_sequence();

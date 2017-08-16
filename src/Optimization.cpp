@@ -419,4 +419,4 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
 }
 
 template class Optimization<double, size_t>;
-}
+}  // namespace dice
