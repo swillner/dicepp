@@ -139,6 +139,7 @@ endfunction()
 
 function(add_cpp_tools TARGET)
   add_on_source(${TARGET} clang-format -i --style=file ALL_SOURCEFILES)
+  add_on_source(${TARGET} clang-tidy ALL_SOURCEFILES -- -std=c++11 INCLUDES DEFINITIONS)
   add_on_source(${TARGET} cppcheck INCLUDES DEFINITIONS --quiet --template=gcc --enable=all ALL_SOURCEFILES)
   add_on_source(${TARGET} cppclean INCLUDES ALL_SOURCEFILES)
   add_on_source(${TARGET} iwyu -std=c++11 -I/usr/include/clang/3.8/include INCLUDES DEFINITIONS SOURCEFILE)
