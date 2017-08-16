@@ -388,6 +388,9 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
         if (settings.has("utility_precision")) {
             opt.set_ftol_abs(settings["utility_precision"].as<Value>());
         }
+        if (settings.has("rel_obj_precision")) {
+            opt.set_ftol_rel(settings["rel_obj_precision"].as<Value>());
+        }
         if (settings.has("rel_var_precision")) {
             opt.set_xtol_rel(settings["rel_var_precision"].as<Value>());
         }

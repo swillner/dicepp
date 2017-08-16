@@ -9,7 +9,7 @@ parameters:
   scale2: -3855.106895 # Additive scaling coefficient
   start_year: 2010
   timestep_length: 1 # 5
-  timestep_num: 100 # 400 # 91 # 19
+  timestep_num: 600 # 400 # 91 # 19
 
 regions:
   - economy:
@@ -68,21 +68,22 @@ climate:
     c4: 0.00487 # Transfer coefficient for lower level
     fco22x: 3.8 # Forcings of equilibrium CO2 doubling (Wm-2)
 
-damage:
+damage_dice:
   type: dice
   parameters:
     a1: 0 # Damage intercept
     a2: 0.00267 # Damage quadratic term
     a3: 2 # Damage exponent
 
-damage_burke:
+damage:
   type: burke
   parameters:
     impact1: 0.0135 # Multiplicative coefficient for linear temperature impact
     impact2: -0.0005 # Multiplicative coefficient for linear temperature impact
-    Tav: 14.34 # global mean temperature average from 1980 to 2010
-    T2010: 14.57 # global mean temperature in 2010 (average of the last five years)
-    T2009: 14.54 # global mean temperature in 2009 (average of the last five years)
+    T_avg: 14.34 # Global mean temperature average from 1980 to 2010
+    T_2010: 14.57 # Global mean temperature in 2010 (average of the last five years)
+    T_2009: 14.54 # Global mean temperature in 2009 (average of the last five years)
+    iterstep: 2
 
 _output:
   type: netcdf
@@ -137,20 +138,100 @@ _control:
 
 optimization:
   s_fix_steps: 10
-  limit_cca: true
+  limit_cca: false
+  verbose: false
   iterations:
-    - library: nlopt
-      #algorithm: mma
-      algorithm: slsqp
-      #algorithm: lbfgs
-      #algorithm: gd_mlsl_lds
-      #algorithm: cobyla
-      #algorithm: praxis
-      timeout: 12
-      maxiter: 10000
-      #rel_var_precision: 0.01
-      utility_precision: 0.001
-      repeat: 5
+    iterstop: 0.00006
+    before:
+      iterations:
+        - library: nlopt
+          #algorithm: mma
+          algorithm: slsqp
+          #algorithm: lbfgs
+          #algorithm: gd_mlsl_lds
+          #algorithm: cobyla
+          #algorithm: praxis
+          timeout: 12
+          maxiter: 10000
+          #rel_var_precision: 0.01
+          rel_obj_precision: 0.001
+          repeat: 5
+        - library: nlopt
+          algorithm: mma
+          #algorithm: slsqp
+          #algorithm: lbfgs
+          #algorithm: gd_mlsl_lds
+          #algorithm: cobyla
+          #algorithm: praxis
+          timeout: 12
+          maxiter: 10000
+          #rel_var_precision: 0.01
+          rel_obj_precision: 0.0001
+          repeat: 5
+        - library: nlopt
+          #algorithm: mma
+          algorithm: slsqp
+          #algorithm: lbfgs
+          #algorithm: gd_mlsl_lds
+          #algorithm: cobyla
+          #algorithm: praxis
+          timeout: 12
+          maxiter: 10000
+          #rel_var_precision: 0.01
+          rel_obj_precision: 0.00001
+          repeat: 5
+    during:
+      iterations:
+        - library: nlopt
+          #algorithm: mma
+          algorithm: slsqp
+          #algorithm: lbfgs
+          #algorithm: gd_mlsl_lds
+          #algorithm: cobyla
+          #algorithm: praxis
+          timeout: 12
+          maxiter: 10000
+          rel_var_precision: 0.01
+          #rel_obj_precision: 0.1
+          repeat: 1
+    after:
+      iterations:
+        - library: nlopt
+          #algorithm: mma
+          algorithm: slsqp
+          #algorithm: lbfgs
+          #algorithm: gd_mlsl_lds
+          #algorithm: cobyla
+          #algorithm: praxis
+          timeout: 12
+          maxiter: 10000
+          #rel_var_precision: 0.01
+          rel_obj_precision: 0.001
+          repeat: 5
+        - library: nlopt
+          algorithm: mma
+          #algorithm: slsqp
+          #algorithm: lbfgs
+          #algorithm: gd_mlsl_lds
+          #algorithm: cobyla
+          #algorithm: praxis
+          timeout: 12
+          maxiter: 10000
+          #rel_var_precision: 0.01
+          rel_obj_precision: 0.0001
+          repeat: 5
+        - library: nlopt
+          #algorithm: mma
+          algorithm: slsqp
+          #algorithm: lbfgs
+          #algorithm: gd_mlsl_lds
+          #algorithm: cobyla
+          #algorithm: praxis
+          timeout: 12
+          maxiter: 10000
+          #rel_var_precision: 0.01
+          rel_obj_precision: 0.00001
+          repeat: 5
   _iterations:
     - library: nlopt
       algorithm: cobyla

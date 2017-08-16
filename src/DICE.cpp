@@ -24,6 +24,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include "BurkeDamage.h"
 #include "DICEClimate.h"
 #include "DICEDamage.h"
 #include "Optimization.h"
@@ -67,8 +68,12 @@ void DICE<Value, Time>::initialize() {
     {
         const settings::SettingsNode& damage_node = settings["damage"];
         const std::string& type = damage_node["type"].as<std::string>();
-        if (type == "dice") {
-            damage.reset(new damage::DICEDamage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>(damage_node["parameters"], global, *climate));
+        if (type == "burke") {
+            damage.reset(
+                new damage::BurkeDamage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>(damage_node["parameters"], global, control, *climate));
+        } else if (type == "dice") {
+            damage.reset(
+                new damage::DICEDamage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>(damage_node["parameters"], global, control, *climate));
         } else {
             throw std::runtime_error("unknown damage module type '" + type + "'");
         }
@@ -224,18 +229,37 @@ void DICE<Value, Time>::run() {
             const settings::SettingsNode& damage_node = settings["damage"];
             const std::string& type = damage_node["type"].as<std::string>();
             if (type == "burke") {
+                const auto& iterations_node = optimization_node["iterations"];
                 auto& burke_damage = *static_cast<damage::BurkeDamage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>*>(damage.get());
                 auto& economy = economies[0];
-                const Value iterstop = optimization_node["iterstop"].as<Value>();
+                const Value iterstop = iterations_node["iterstop"].as<Value>();
                 Value phi_diff = 1;
-                single_optimization(optimization, optimization_node, initial_values, verbose);
+                single_optimization(optimization, iterations_node["before"], initial_values, verbose);
                 TimeSeries<Value> s_fix(control.s.value());
-                //std::cout << s_fix << std::endl;
+                size_t i = 0;
                 while (phi_diff > iterstop) {
                     std::cout << "iterstop = " << iterstop << " < phi_diff = " << phi_diff << std::endl;
                     burke_damage.recalc_f(economy, s_fix);
-                    single_optimization(optimization, optimization_node, initial_values, verbose);
+                    if (i % 5 == 0) {
+                        single_optimization(optimization, iterations_node["after"], initial_values, verbose);
+                    } else {
+                        single_optimization(optimization, iterations_node["during"], initial_values, verbose);
+                    }
+                    ++i;
                     phi_diff = burke_damage.phi_diff(economy, s_fix);
+                    if (phi_diff <= iterstop) {
+                        phi_diff = 1;
+                        while (phi_diff > iterstop) {
+                            std::cout << "iterstop = " << iterstop << " < phi_diff = " << phi_diff << std::endl;
+                            burke_damage.recalc_f(economy, s_fix);
+                            single_optimization(optimization, iterations_node["after"], initial_values, verbose);
+                            phi_diff = burke_damage.phi_diff(economy, s_fix);
+                        }
+                    }
+                }
+                burke_damage.calc_final_f();
+                std::fill(std::begin(control.s.value()), std::end(control.s.value()), global.optlrsav);
+                single_optimization(optimization, iterations_node["after"], initial_values, verbose);
             } else {
                 single_optimization(optimization, optimization_node, initial_values, verbose);
             }

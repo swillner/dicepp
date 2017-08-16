@@ -38,9 +38,11 @@ class DICEDamage : public Damage<Value, Time, Constant, Variable> {
     const Constant a3{settings["a3"].template as<Constant>()};  // Damage exponent
 
   public:
-    DICEDamage(const settings::SettingsNode& settings_p, const Global<Constant, Time>& global_p, climate::Climate<Value, Time, Constant, Variable>& climate_p)
-        : Damage<Value, Time, Constant, Variable>(global_p, climate_p), settings(settings_p) {
-    }
+    DICEDamage(const settings::SettingsNode& settings_p,
+               const Global<Constant, Time>& global_p,
+               const Control<Value, Time, Constant, Variable>& control_p,
+               climate::Climate<Value, Time, Constant, Variable>& climate_p)
+        : Damage<Value, Time, Constant, Variable>(global_p, control_p, climate_p), settings(settings_p){};
     Value damfrac(Time t) override {
         return a1 * climate.T_atm(t) + a2 * std::pow(climate.T_atm(t), a3);
     }

@@ -20,12 +20,17 @@
 #ifndef CLIMATE_H
 #define CLIMATE_H
 
-#include "Control.h"
-#include "Emissions.h"
-#include "Global.h"
 #include "types.h"
 
 namespace dice {
+
+template<typename Value, typename Time>
+class Global;
+template<typename Value, typename Time, typename Constant, typename Variable>
+class Control;
+template<typename Value, typename Time, typename Constant, typename Variable>
+class Emissions;
+
 namespace climate {
 
 template<typename Value, typename Time, typename Constant = Value, typename Variable = TimeSeries<Value>>

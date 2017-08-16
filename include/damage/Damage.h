@@ -26,9 +26,10 @@ namespace dice {
 
 template<typename Value, typename Time>
 class Global;
+template<typename Value, typename Time, typename Constant, typename Variable>
+class Control;
 
 namespace climate {
-
 template<typename Value, typename Time, typename Constant, typename Variable>
 class Climate;
 }
@@ -39,10 +40,14 @@ template<typename Value, typename Time, typename Constant = Value, typename Vari
 class Damage {
   protected:
     const Global<Constant, Time>& global;
+    const Control<Value, Time, Constant, Variable>& control;
     climate::Climate<Value, Time, Constant, Variable>& climate;
 
   public:
-    Damage(const Global<Constant, Time>& global_p, climate::Climate<Value, Time, Constant, Variable>& climate_p) : global(global_p), climate(climate_p){};
+    Damage(const Global<Constant, Time>& global_p,
+           const Control<Value, Time, Constant, Variable>& control_p,
+           climate::Climate<Value, Time, Constant, Variable>& climate_p)
+        : global(global_p), climate(climate_p), control(control_p){};
     virtual ~Damage(){};
     virtual bool observe(Observer<Value, Time, Constant>& observer) {
         OBSERVE_VAR(damfrac);

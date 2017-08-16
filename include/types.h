@@ -23,12 +23,21 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <ostream>
 #include "settingsnode.h"
 
 namespace dice {
 
 template<typename Value>
 using TimeSeries = std::vector<Value>;
+
+template<typename Value>
+inline std::ostream& operator<<(std::ostream& os, const TimeSeries<Value> v) {
+    for(size_t i = 0; i < v.size(); ++i) {
+        os << i << " : " << v[i] << std::endl;
+    }
+    return os;
+}
 
 #define OBSERVE_VAR(v)                                                                 \
     if (!observer.observe(#v, [this](Time t) { return v(t); }, global.timestep_num)) { \
@@ -263,6 +272,36 @@ class StepwiseBackwardLookingTimeSeries {
         const Value first_value = series[0];
         std::fill(series.begin(), series.end(), initial_value);
         series[0] = first_value;
+    }
+};
+
+template<typename XValue, typename YValue = XValue>
+class LinearInterpolator {
+  public:
+    std::vector<std::pair<XValue, YValue>> data;
+    inline YValue operator()(const XValue& x) const {
+        if (data.size() == 0) {
+            throw std::out_of_range("no data for linear interpolation");
+        }
+        size_t lower = 0;
+        size_t upper = data.size();
+        while (upper - lower > 1) {
+            const size_t i = (upper + lower) / 2;
+            if (x < data[i].first) {
+                upper = i;
+            } else {
+                lower = i;
+            }
+        }
+        if (upper == data.size()) {
+            return data[upper - 1].second;
+        } else if (x < data[lower].first) {
+            return data[lower].second;
+        } else {
+            const auto& l = data[lower];
+            const auto& u = data[upper];
+            return (u.second - l.second) * (x - l.first) / (u.first - l.first) + l.second;
+        }
     }
 };
 }
