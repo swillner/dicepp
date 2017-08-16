@@ -18,22 +18,27 @@
 */
 
 #include "DICE.h"
-#include <fstream>
+#include <fstream>  // IWYU pragma: keep
 #include <iomanip>
 #include <iostream>
-#include <sstream>
+#include <iterator>
+#include <sstream>  // IWYU pragma: keep
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include "BurkeDamage.h"
 #include "DICEClimate.h"
 #include "DICEDamage.h"
 #include "Optimization.h"
+#include "autodiff.h"
 #include "csv-parser.h"
 #include "settingsnode.h"
 
 #ifdef DICEPP_WITH_NETCDF
 #include <ncDim.h>
 #include <ncFile.h>
+#include <ncGroup.h>
+#include <ncType.h>
 #include <ncVar.h>
 #endif
 
@@ -440,4 +445,4 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
 }
 
 template class DICE<double, size_t>;
-}
+}  // namespace dice

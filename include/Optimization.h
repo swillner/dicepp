@@ -20,6 +20,7 @@
 #ifndef OPTIMIZATION_H
 #define OPTIMIZATION_H
 
+#include <cstddef>
 #include <vector>
 #include "types.h"
 
@@ -42,6 +43,6 @@ class Optimization {
     virtual std::vector<Value> objective(const Value* vars, Value* grad) = 0;   // to be maximized
     virtual std::vector<Value> constraint(const Value* vars, Value* grad) = 0;  // to be <= 0
 };
-}
+}  // namespace dice
 
 #endif

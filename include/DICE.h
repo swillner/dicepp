@@ -21,6 +21,7 @@
 #define DICE_H
 
 #include <autodiff.h>
+#include <stddef.h>
 #include <memory>
 #include <vector>
 #include "Climate.h"
@@ -29,14 +30,10 @@
 #include "Economy.h"
 #include "Emissions.h"
 #include "Global.h"
+#include "types.h"
 
 namespace settings {
 class SettingsNode;
-}
-
-namespace netCDF {
-class NcGroup;
-class NcDim;
 }
 
 namespace dice {
@@ -76,6 +73,6 @@ class DICE {
     void output();
     void run();
 };
-}
+}  // namespace dice
 
 #endif

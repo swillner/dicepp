@@ -73,3 +73,6 @@ endif()
 
 include(lib/settingsnode/settingsnode.cmake)
 target_link_libraries(dicepp settingsnode)
+
+include(cmake/helpers.cmake)
+add_cpp_tools(dicepp)

@@ -18,7 +18,9 @@
 */
 
 #include "Optimization.h"
-#include "DICE.h"
+#include <iostream>
+#include <stdexcept>
+#include <string>
 #include "settingsnode.h"
 
 #pragma GCC diagnostic push

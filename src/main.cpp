@@ -18,9 +18,10 @@
 */
 
 #include <cstdlib>
-#include <fstream>
+#include <exception>
+#include <fstream>  // IWYU pragma: keep
 #include <iostream>
-#include <stdexcept>
+#include <string>
 #include "DICE.h"
 #include "settingsnode.h"
 
