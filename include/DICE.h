@@ -24,7 +24,7 @@
 #include <stddef.h>
 #include <memory>
 #include <vector>
-#include "Climate.h"
+#include "Climate.h"  // IWYU pragma: keep
 #include "Control.h"
 #include "Damage.h"
 #include "Economy.h"

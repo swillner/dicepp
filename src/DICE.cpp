@@ -115,7 +115,7 @@ void DICE<Value, Time>::initialize() {
                                 throw std::runtime_error("could not open '" + filename + "'");
                             }
                             csv::Parser parser(datastream);
-                            const size_t col = node["column"].as<size_t>();
+                            const auto col = node["column"].as<size_t>();
                             parser.next_row();  // Skip header row
                             for (auto d = v.begin(); d != v.end(); ++d) {
                                 for (size_t c = 0; c < col; c++) {
@@ -226,7 +226,7 @@ void DICE<Value, Time>::run() {
 
             const size_t optimization_variables_num = global.timestep_num - optimization_node["s_fix_steps"].as<Time>(0);
             const size_t constraints_num = optimization_node["limit_cca"].as<bool>() ? 1 : 0;
-            const bool verbose = optimization_node["verbose"].as<bool>();
+            const auto verbose = optimization_node["verbose"].as<bool>();
             DICEOptimization optimization{optimization_variables_num, 1, constraints_num, *this};
             std::fill(std::begin(control.s.value()), std::end(control.s.value()), global.optlrsav);
             TimeSeries<Value> initial_values(optimization_variables_num, 0);
@@ -237,7 +237,7 @@ void DICE<Value, Time>::run() {
                 const auto& iterations_node = optimization_node["iterations"];
                 auto& burke_damage = *static_cast<damage::BurkeDamage<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>*>(damage.get());
                 auto& economy = economies[0];
-                const Value iterstop = iterations_node["iterstop"].as<Value>();
+                const auto iterstop = iterations_node["iterstop"].as<Value>();
                 Value phi_diff = 1;
                 single_optimization(optimization, iterations_node["before"], initial_values, verbose);
                 TimeSeries<Value> s_fix(control.s.value());

@@ -24,6 +24,7 @@
 #include <string>
 #include "DICE.h"
 #include "settingsnode.h"
+#include "version.h"
 
 using Time = size_t;
 using Value = double;

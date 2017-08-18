@@ -119,6 +119,7 @@ class Economy {
     // Population (millions)
     Constant L(Time t) {
         return L_series.get(t, [this](Time t, Constant L_last) {
+            (void)L_last;
 
             return std::pow(L_series.initial_value, std::pow(1 - pop_adj, global.timestep_length * 0.2 * t)) * pop_asym
                    * std::pow(pop_asym, -std::pow(1 - pop_adj, global.timestep_length * 0.2 * t));
@@ -273,6 +274,6 @@ class Economy {
         return periodu(t) * (L(t) * rr(t));
     }
 };
-}
+}  // namespace dice
 
 #endif

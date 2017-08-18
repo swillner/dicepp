@@ -88,8 +88,8 @@ int midaco_print(int,
 namespace dice {
 
 #ifdef DICEPP_WITH_NLOPT
-static const char* get_optimization_results(const int& result_) {
-    switch (result_) {
+static const char* get_optimization_results(const int result_p) {
+    switch (result_p) {
         case 1:
             return "Generic success";
         case 2:
@@ -375,14 +375,16 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
         if (constraints_num > 0) {  // TODO
             opt.add_inequality_constraint(
                 [](unsigned n, const double* x, double* grad, void* data) {
-                    Optimization<Value, Time>* optimization = static_cast<Optimization<Value, Time>*>(data);
+                    (void)n;
+                    auto* optimization = static_cast<Optimization<Value, Time>*>(data);
                     return optimization->constraint(x, grad)[0];  // TODO
                 },
                 this, 0.1);
         }
         opt.set_max_objective(
             [](unsigned n, const double* x, double* grad, void* data) {
-                Optimization<Value, Time>* optimization = static_cast<Optimization<Value, Time>*>(data);
+                (void)n;
+                auto* optimization = static_cast<Optimization<Value, Time>*>(data);
                 return optimization->objective(x, grad)[0];  // TODO
             },
             this);

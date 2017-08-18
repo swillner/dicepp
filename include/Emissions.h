@@ -45,6 +45,7 @@ class Emissions {
     // Total CO2 emissions (GtCO2 per year)
     Value operator()(Time t) {
         return E_series.get(t, [this](Time t, Value E_last) {
+            (void)E_last;
 
             Value E{control.variables_num, 0};
             for (auto&& economy : economies) {
@@ -68,6 +69,6 @@ class Emissions {
         return observer.observe("E_total", *this, global.timestep_num);
     }
 };
-}
+}  // namespace dice
 
 #endif
