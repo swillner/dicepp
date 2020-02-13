@@ -1,3 +1,9 @@
-[submodule "lib/settingsnode/lib/yaml-cpp"]
-	path = lib/settingsnode/lib/yaml-cpp
-	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "cmake"]
+	path = cmake
+	url = https://github.com/swillner/cmake-modules
+[submodule "lib/cpp-library"]
+	path = lib/cpp-library
+	url = https://github.com/swillner/cpp-library
+[submodule "lib/settingsnode"]
+	path = lib/settingsnode
+	url = https://github.com/swillner/settingsnode
