@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2017 Sven Willner <sven.willner@gmail.com>
+  Copyright (C) 2017-2020 Sven Willner <sven.willner@pik-potsdam.de>
 
   This file is part of DICE++.
 
