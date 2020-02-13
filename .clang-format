@@ -1,5 +1,5 @@
 AccessModifierOffset: -2
-AllowShortFunctionsOnASingleLine: None
+AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: true
 BasedOnStyle: Google
