@@ -21,7 +21,9 @@
 #define ECONOMY_H
 
 #include <math.h>
+
 #include <iostream>
+
 #include "Climate.h"
 #include "Control.h"
 #include "Damage.h"
@@ -76,8 +78,7 @@ class Economy {
             const Control<Value, Time, Constant, Variable>& control_p,
             climate::Climate<Value, Time, Constant, Variable>& climate_p,
             damage::Damage<Value, Time, Constant, Variable>& damage_p)
-        : settings(settings_p), global(global_p), control(control_p), climate(climate_p), damage(damage_p) {
-    }
+        : settings(settings_p), global(global_p), control(control_p), climate(climate_p), damage(damage_p) {}
 
     void reset() {
         L_series.reset();
@@ -118,41 +119,29 @@ class Economy {
 
     // Population (millions)
     Constant L(Time t) {
-        return L_series.get(t, [this](Time t, Constant L_last) {
-            (void)L_last;
-
+        return L_series.get(t, [this](Time t, Constant /* L_last */) {
             return std::pow(L_series.initial_value, std::pow(1 - pop_adj, global.timestep_length * 0.2 * t)) * pop_asym
                    * std::pow(pop_asym, -std::pow(1 - pop_adj, global.timestep_length * 0.2 * t));
-
         });
     }
 
     // Level of total factor productivity
     Constant A(Time t) {
         return A_series.get(t, [this](Time t, Constant A_last) {
-
             const Constant gA_t_m1 = gA0 * std::exp(-dA * global.timestep_length * (t - 1));
             return A_last / (1 - gA_t_m1);
-
         });
     }
 
     // Capital stock (trillions 2005 US dollars)
     Value K(Time t) {
-        return K_series.get(t, [this](Time t, const Value& K_last) {
-
-            return std::pow(1 - global.dK, global.timestep_length) * K_last + global.timestep_length * I(t - 1);
-
-        });
+        return K_series.get(
+            t, [this](Time t, const Value& K_last) { return std::pow(1 - global.dK, global.timestep_length) * K_last + global.timestep_length * I(t - 1); });
     }
 
     // Cumulative industrial carbon emissions (GTC)
     Value cca(Time t) {
-        return cca_series.get(t, [this](Time t, const Value& cca_last) {
-
-            return cca_last + global.timestep_length * E_ind(t - 1) / 3.666;
-
-        });
+        return cca_series.get(t, [this](Time t, const Value& cca_last) { return cca_last + global.timestep_length * E_ind(t - 1) / 3.666; });
     }
 
     // CO2-equivalent-emissions output ratio
@@ -162,14 +151,10 @@ class Economy {
     }
 
     // Average utility social discount rate
-    Constant rr(Time t) {
-        return 1 / std::pow(1 + global.prstp, t);
-    }
+    Constant rr(Time t) { return 1 / std::pow(1 + global.prstp, t); }
 
     // Emissions from deforestation
-    Constant E_tree(Time t) {
-        return E_land0 * std::pow(1 - dE_land, 0.2 * global.timestep_length * t);
-    }
+    Constant E_tree(Time t) { return E_land0 * std::pow(1 - dE_land, 0.2 * global.timestep_length * t); }
 
     // Adjusted cost for backstop
     Constant cost1(Time t) {
@@ -187,34 +172,22 @@ class Economy {
     }
 
     // Base Case Carbon Price
-    Constant cpricebase(Time t) {
-        return cprice0 * std::pow(1 + gcprice, global.timestep_length * t);
-    }
+    Constant cpricebase(Time t) { return cprice0 * std::pow(1 + gcprice, global.timestep_length * t); }
 
     // Backstop price
-    Constant pbacktime(Time t) {
-        return pback * std::pow(1 - gback, 0.2 * global.timestep_length * t);
-    }
+    Constant pbacktime(Time t) { return pback * std::pow(1 - gback, 0.2 * global.timestep_length * t); }
 
     // Industrial emissions (GtCO2 per year)
-    Value E_ind(Time t) {
-        return sigma(t) * Y_gross(t) * (1 - control.mu[t]);
-    }
+    Value E_ind(Time t) { return sigma(t) * Y_gross(t) * (1 - control.mu[t]); }
 
     // Investment (trillions 2005 USD per year)
-    Value I(Time t) {
-        return control.s[t] * Y(t);
-    }
+    Value I(Time t) { return control.s[t] * Y(t); }
 
     // Consumption (trillions 2005 US dollars per year)
-    Value C(Time t) {
-        return std::max(C_lower, Y(t) - I(t));
-    }
+    Value C(Time t) { return std::max(C_lower, Y(t) - I(t)); }
 
     // Per capita consumption (thousands 2005 USD per year)
-    Value C_pc(Time t) {
-        return std::max(C_pc_lower, 1000 * C(t) / L(t));
-    }
+    Value C_pc(Time t) { return std::max(C_pc_lower, 1000 * C(t) / L(t)); }
 
     // Real interest rate (per annum)
     Value ri(Time t) {
@@ -226,53 +199,33 @@ class Economy {
     }
 
     // Gross world product net of abatement and damages (trillions 2005 USD per year)
-    Value Y(Time t) {
-        return Y_net(t) - abatecost(t);
-    }
+    Value Y(Time t) { return Y_net(t) - abatecost(t); }
 
     // Gross world product GROSS of abatement and damages (trillions 2005 USD per year)
-    Value Y_gross(Time t) {
-        return A(t) * std::pow(L(t) / 1000, 1 - global.gamma) * std::pow(K(t), global.gamma);
-    }
+    Value Y_gross(Time t) { return A(t) * std::pow(L(t) / 1000, 1 - global.gamma) * std::pow(K(t), global.gamma); }
 
     // Output net of damages equation (trillions 2005 USD per year)
-    Value Y_net(Time t) {
-        return Y_gross(t) * (1 - damage.damfrac(t));
-    }
+    Value Y_net(Time t) { return Y_gross(t) * (1 - damage.damfrac(t)); }
 
     // Damages (trillions 2005 USD per year)
-    Value damages(Time t) {
-        return Y_gross(t) * damage.damfrac(t);
-    }
+    Value damages(Time t) { return Y_gross(t) * damage.damfrac(t); }
 
     // Cost of emissions reductions  (trillions 2005 USD per year)
-    Value abatecost(Time t) {
-        return Y_gross(t) * cost1(t) * std::pow(control.mu[t], global.expcost2) * std::pow(partfract(t), 1 - global.expcost2);
-    }
+    Value abatecost(Time t) { return Y_gross(t) * cost1(t) * std::pow(control.mu[t], global.expcost2) * std::pow(partfract(t), 1 - global.expcost2); }
 
     // Marginal cost of abatement (2005$ per ton CO2)
-    Value mcabate(Time t) {
-        return pbacktime(t) * std::pow(control.mu[t], global.expcost2 - 1);
-    }
+    Value mcabate(Time t) { return pbacktime(t) * std::pow(control.mu[t], global.expcost2 - 1); }
 
     // Carbon price (2005$ per ton of CO2)
-    Value cprice(Time t) {
-        return pbacktime(t) * std::pow(control.mu[t] / partfract(t), global.expcost2 - 1);
-    }
+    Value cprice(Time t) { return pbacktime(t) * std::pow(control.mu[t] / partfract(t), global.expcost2 - 1); }
 
     // One period utility function
-    Value periodu(Time t) {
-        return (std::pow(C(t) / (L(t) / 1000), 1 - global.elasmu) - 1) / (1 - global.elasmu) - 1;
-    }
+    Value periodu(Time t) { return (std::pow(C(t) / (L(t) / 1000), 1 - global.elasmu) - 1) / (1 - global.elasmu) - 1; }
 
     // Total CO2 emissions (GtCO2 per year)
-    Value E(Time t) {
-        return E_ind(t) + E_tree(t);
-    }
+    Value E(Time t) { return E_ind(t) + E_tree(t); }
 
-    Value utility(Time t) {
-        return periodu(t) * (L(t) * rr(t));
-    }
+    Value utility(Time t) { return periodu(t) * (L(t) * rr(t)); }
 };
 }  // namespace dice
 

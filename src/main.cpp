@@ -22,11 +22,14 @@
 #include <fstream>  // IWYU pragma: keep
 #include <iostream>
 #include <string>
+
 #include "DICE.h"
 #include "settingsnode.h"
+#include "settingsnode/inner.h"
+#include "settingsnode/yaml.h"
 #include "version.h"
 
-using Time = size_t;
+using Time = int;
 using Value = double;
 
 static void print_usage(const char* program_name) {
@@ -36,26 +39,26 @@ static void print_usage(const char* program_name) {
                  "   Nordhaus, William D. The Climate Casino: Risk, Uncertainty, and Economics\n"
                  "   for a Warming World. Yale University Press (2013).\n"
                  "\n"
-                 "Version:  " DICEPP_VERSION
-                 "\n"
+                 "Version:  "
+              << dicepp::version
+              << "\n"
                  "Author:   Sven Willner <sven.willner@pik-potsdam.de>\n"
                  "\n"
                  "Source:   https://github.com/swillner/dicepp\n"
-                 "License:  AGPL, (c) 2017 Sven Willner (see LICENSE file)\n"
+                 "License:  AGPL, (c) 2017-2020 Sven Willner (see LICENSE file)\n"
                  "\n"
                  "Usage:    "
               << program_name
               << " (<option> | <settingsfile>)\n"
                  "Options:\n"
-                 "   -h, --help     Print this help text\n"
+              << (dicepp::has_diff ? "  -d, --diff     Print git diff output from compilation\n" : "")
+              << "   -h, --help     Print this help text\n"
                  "   -v, --version  Print version"
               << std::endl;
 }
 
 int main(int argc, char* argv[]) {
-#ifndef DEBUG
     try {
-#endif
         if (argc != 2) {
             print_usage(argv[0]);
             return 1;
@@ -63,7 +66,9 @@ int main(int argc, char* argv[]) {
         const std::string arg = argv[1];
         if (arg.length() > 1 && arg[0] == '-') {
             if (arg == "--version" || arg == "-v") {
-                std::cout << DICEPP_VERSION << std::endl;
+                std::cout << dicepp::version << std::endl;
+            } else if (dicepp::has_diff && (arg == "--diff" || arg == "-d")) {
+                std::cout << dicepp::git_diff << std::flush;
             } else if (arg == "--help" || arg == "-h") {
                 print_usage(argv[0]);
             } else {
@@ -74,21 +79,19 @@ int main(int argc, char* argv[]) {
             settings::SettingsNode settings;
             if (arg == "-") {
                 std::cin >> std::noskipws;
-                settings = settings::SettingsNode(std::cin);
+                settings = settings::SettingsNode(std::make_unique<settings::YAML>(std::cin));
             } else {
                 std::ifstream settings_file(arg);
-                settings = settings::SettingsNode(settings_file);
+                settings = settings::SettingsNode(std::make_unique<settings::YAML>(settings_file));
             }
             dice::DICE<Value, Time> dice(settings);
             dice.initialize();
             dice.run();
             dice.output();
         }
-#ifndef DEBUG
     } catch (std::exception& ex) {
         std::cerr << ex.what() << std::endl;
         return 255;
     }
-#endif
     return 0;
 }

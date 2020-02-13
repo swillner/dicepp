@@ -18,6 +18,7 @@
 */
 
 #include "DICE.h"
+
 #include <fstream>  // IWYU pragma: keep
 #include <iomanip>
 #include <iostream>
@@ -26,6 +27,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+
 #include "BurkeDamage.h"
 #include "DICEClimate.h"
 #include "DICEDamage.h"
@@ -35,11 +37,7 @@
 #include "settingsnode.h"
 
 #ifdef DICEPP_WITH_NETCDF
-#include <ncDim.h>
-#include <ncFile.h>
-#include <ncGroup.h>
-#include <ncType.h>
-#include <ncVar.h>
+#include "netcdftools.h"
 #endif
 
 namespace dice {
@@ -49,8 +47,7 @@ DICE<Value, Time>::DICE(const settings::SettingsNode& settings_p)
     : settings(settings_p),
       global(settings_p["parameters"]),
       control(settings_p["parameters"]["timestep_num"].as<Time>()),
-      emissions(global, control, economies) {
-}
+      emissions(global, control, economies) {}
 
 template<typename Value, typename Time>
 void DICE<Value, Time>::initialize() {
@@ -87,7 +84,7 @@ void DICE<Value, Time>::initialize() {
 
     // Initialize regions
     {
-        for (const auto&& region_node : settings["regions"].as_sequence()) {
+        for (const auto&& region_node : settings["regions"].as_sequence()) {  // TODO use std::transform
             economies.emplace_back(
                 Economy<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>>(region_node["economy"], global, control, *climate, *damage));
         }
@@ -98,11 +95,11 @@ void DICE<Value, Time>::initialize() {
     // Initialize control variables
     if (settings.has("control")) {
         class ControlInputObserver : public Observer<autodiff::Value<Value>, Time, Value> {
-          protected:
+          private:
             const settings::SettingsNode& input_node;
 
           public:
-            explicit ControlInputObserver(const settings::SettingsNode& input_node_p) : input_node(input_node_p){};
+            explicit ControlInputObserver(const settings::SettingsNode& input_node_p) : input_node(input_node_p) {}
             bool observe(const std::string& name, TimeSeries<Value>& v) override {
                 if (input_node.has(name)) {
                     const settings::SettingsNode& node = input_node[name];
@@ -115,10 +112,10 @@ void DICE<Value, Time>::initialize() {
                                 throw std::runtime_error("could not open '" + filename + "'");
                             }
                             csv::Parser parser(datastream);
-                            const auto col = node["column"].as<size_t>();
+                            const auto col = node["column"].as<std::size_t>();
                             parser.next_row();  // Skip header row
                             for (auto d = v.begin(); d != v.end(); ++d) {
-                                for (size_t c = 0; c < col; c++) {
+                                for (std::size_t c = 0; c < col; c++) {
                                     parser.next_col();
                                 }
                                 *d = parser.read<Value>();
@@ -149,15 +146,16 @@ void DICE<Value, Time>::single_optimization(Optimization<Value, Time>& optimizat
                                             TimeSeries<Value>& initial_values,
                                             bool verbose) {
     for (const auto& iteration_node : optimization_node["iterations"].as_sequence()) {
-        for (size_t i = 0; i < iteration_node["repeat"].as<size_t>(1); ++i) {
+        for (std::size_t i = 0; i < iteration_node["repeat"].as<size_t>(1); ++i) {
             std::copy(std::begin(control.s.value()), std::begin(control.s.value()) + initial_values.size(), std::begin(initial_values));
             optimization.optimize(iteration_node, initial_values, verbose);
             if (verbose) {
                 reset();
                 const autodiff::Value<Value> utility = calc_single_utility();
+                const auto& deriv = utility.derivative();
                 Value sum = 0;
-                for (size_t i = 0; i < initial_values.size(); ++i) {
-                    sum += utility.derivative()[i] * utility.derivative()[i];
+                for (const auto d : deriv) {
+                    sum += d * d;  // TODO use std::accumulate
                 }
                 std::cout << "Gradient length = " << std::sqrt(sum) << std::endl;
                 std::cout << "Finished with utility = " << utility.value() << std::endl;
@@ -175,15 +173,15 @@ void DICE<Value, Time>::run() {
         const settings::SettingsNode& optimization_node = settings["optimization"];
         if (optimization_node.has("iterations")) {
             class DICEOptimization : public Optimization<Value, Time> {
-              protected:
+              private:
                 DICE& dice;
 
               public:
                 using Optimization<Value, Time>::variables_num;
                 using Optimization<Value, Time>::objectives_num;
                 using Optimization<Value, Time>::constraints_num;
-                DICEOptimization(size_t variables_num_p, size_t objectives_num_p, size_t constraints_num_p, DICE& dice_p)
-                    : Optimization<Value, Time>(variables_num_p, objectives_num_p, constraints_num_p), dice(dice_p){};
+                DICEOptimization(unsigned int variables_num_p, unsigned int objectives_num_p, unsigned int constraints_num_p, DICE& dice_p)
+                    : Optimization<Value, Time>(variables_num_p, objectives_num_p, constraints_num_p), dice(dice_p) {}
 
                 std::vector<Value> objective(const Value* vars, Value* grad) override {
 #ifdef DEBUG
@@ -224,8 +222,8 @@ void DICE<Value, Time>::run() {
                 }
             };
 
-            const size_t optimization_variables_num = global.timestep_num - optimization_node["s_fix_steps"].as<Time>(0);
-            const size_t constraints_num = optimization_node["limit_cca"].as<bool>() ? 1 : 0;
+            const unsigned int optimization_variables_num = global.timestep_num - optimization_node["s_fix_steps"].as<Time>(0);
+            const unsigned int constraints_num = optimization_node["limit_cca"].as<bool>() ? 1 : 0;
             const auto verbose = optimization_node["verbose"].as<bool>();
             DICEOptimization optimization{optimization_variables_num, 1, constraints_num, *this};
             std::fill(std::begin(control.s.value()), std::end(control.s.value()), global.optlrsav);
@@ -241,7 +239,7 @@ void DICE<Value, Time>::run() {
                 Value phi_diff = 1;
                 single_optimization(optimization, iterations_node["before"], initial_values, verbose);
                 TimeSeries<Value> s_fix(control.s.value());
-                size_t i = 0;
+                int i = 0;
                 while (phi_diff > iterstop) {
                     std::cout << "iterstop = " << iterstop << " < phi_diff = " << phi_diff << std::endl;
                     burke_damage.recalc_f(economy, s_fix);
@@ -269,11 +267,11 @@ void DICE<Value, Time>::run() {
                 single_optimization(optimization, optimization_node, initial_values, verbose);
             }
         } else {
-            const size_t optimization_variables_num = global.timestep_num - 10;
             const autodiff::Value<Value> utility = calc_single_utility();
+            const auto& deriv = utility.derivative();
             Value sum = 0;
-            for (size_t i = 0; i < optimization_variables_num; ++i) {
-                sum += utility.derivative()[i] * utility.derivative()[i];
+            for (const auto d : deriv) {
+                sum += d * d;  // TODO use std::accumulate
             }
             std::cout << "Gradient length = " << std::sqrt(sum) << std::endl;
             std::cout << "Finished with utility = " << utility.value() << std::endl;
@@ -331,21 +329,18 @@ void DICE<Value, Time>::write_netcdf_output(const settings::SettingsNode& output
         netCDF::NcVar time_var = file.addVar("time", netCDF::NcType::nc_UINT, {time_dim});
         for (Time t = 0; t < global.timestep_num; ++t) {
             const Time year = global.start_year + t * global.timestep_length;
-            time_var.putVar({t}, static_cast<const unsigned int>(year));
+            time_var.putVar({static_cast<std::size_t>(t)}, static_cast<const unsigned int>(year));
         }
         class NetCDFOutputObserver : public Observer<autodiff::Value<Value>, Time, Value> {
-          protected:
+          private:
             const netCDF::NcGroup& group;
             const netCDF::NcDim& time_dim;
             const settings::SettingsNode& output_node;
 
           public:
             NetCDFOutputObserver(const netCDF::NcGroup& group_p, const netCDF::NcDim& time_dim_p, const settings::SettingsNode& output_node_p)
-                : group(group_p), time_dim(time_dim_p), output_node(output_node_p){};
-            std::tuple<bool, bool, Time> want(const std::string& name) override {
-                (void)name;
-                return {true, true, 0};
-            }
+                : group(group_p), time_dim(time_dim_p), output_node(output_node_p) {}
+            std::tuple<bool, bool, Time> want(const std::string& /* name */) override { return {true, true, 0}; }
             bool observe(const std::string& name, TimeSeries<Value>& v) override {
                 netCDF::NcVar var = group.addVar(name, netCDF::NcType::nc_FLOAT, {time_dim});
                 var.setCompression(false, true, 7);
@@ -376,24 +371,19 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
         }
 
         class CSVOutputObserver : public Observer<autodiff::Value<Value>, Time, Value> {
-          protected:
+          private:
             std::ofstream& file;
-
-          public:
             Time t;
             std::string var;
 
-            explicit CSVOutputObserver(std::ofstream& file_p) : file(file_p){};
-            std::tuple<bool, bool, Time> want(const std::string& name) override {
-                return std::tuple<bool, bool, Time>(name == var, false, t);
-            }
-            bool observe(const std::string& name, const autodiff::Value<Value>& v) override {
-                (void)name;
+          public:
+            explicit CSVOutputObserver(std::ofstream& file_p) : file(file_p), t(0) {}
+            std::tuple<bool, bool, Time> want(const std::string& name) override { return std::tuple<bool, bool, Time>(name == var, false, t); }
+            bool observe(const std::string& /* name */, const autodiff::Value<Value>& v) override {
                 file << v.value();
                 return false;
             }
-            bool observe(const std::string& name, const Value& v) override {
-                (void)name;
+            bool observe(const std::string& /* name */, const Value& v) override {
                 file << v;
                 return false;
             }
@@ -403,6 +393,10 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
                     return false;
                 }
                 return true;
+            }
+            void set(Time t_p, const std::string& var_p) {
+                t = t_p;
+                var = var_p;
             }
         };
         const auto& variables = output_node["columns"].as_sequence();
@@ -417,7 +411,6 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
         const auto utility = calc_single_utility();
         const auto& dev = utility.derivative();
         for (Time t = 0; t < global.timestep_num; ++t) {
-            observer.t = t;
             for (auto&& var = std::begin(variables); var != std::end(variables); ++var) {
                 if (var != std::begin(variables)) {
                     file << ",";
@@ -432,7 +425,7 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
                 } else if (name == "gradient") {
                     file << dev[t];
                 } else {
-                    observer.var = name;
+                    observer.set(t, name);
                     if (economies[0].observe(observer) && climate->observe(observer) && damage->observe(observer) && control.observe(observer)
                         && emissions.observe(observer)) {
                         throw std::runtime_error("variable '" + name + "' not found");
@@ -446,5 +439,5 @@ void DICE<Value, Time>::write_csv_output(const settings::SettingsNode& output_no
     }
 }
 
-template class DICE<double, size_t>;
+template class DICE<double, int>;
 }  // namespace dice

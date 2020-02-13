@@ -21,6 +21,7 @@
 #define EMISSIONS_H
 
 #include <vector>
+
 #include "Control.h"
 #include "Economy.h"
 #include "Global.h"
@@ -40,19 +41,16 @@ class Emissions {
     Emissions(const Global<Constant, Time>& global_p,
               const Control<Value, Time, Constant, Variable>& control_p,
               std::vector<Economy<Value, Time, Constant, Variable>>& economies_p)
-        : global(global_p), control(control_p), economies(economies_p){};
+        : global(global_p), control(control_p), economies(economies_p) {}
 
     // Total CO2 emissions (GtCO2 per year)
     Value operator()(Time t) {
-        return E_series.get(t, [this](Time t, Value E_last) {
-            (void)E_last;
-
+        return E_series.get(t, [this](Time t, Value /* E_last */) {
             Value E{control.variables_num, 0};
             for (auto&& economy : economies) {
                 E += economy.E(t);
             }
             return E;
-
         });
     }
     void initialize() {
@@ -62,12 +60,8 @@ class Emissions {
         }
         E_series.set_first_value(E);
     }
-    void reset() {
-        E_series.reset();
-    }
-    bool observe(Observer<Value, Time, Constant>& observer) {
-        return observer.observe("E_total", *this, global.timestep_num);
-    }
+    void reset() { E_series.reset(); }
+    bool observe(Observer<Value, Time, Constant>& observer) { return observer.observe("E_total", *this, global.timestep_num); }
 };
 }  // namespace dice
 

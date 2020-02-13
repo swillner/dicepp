@@ -51,15 +51,9 @@ class BurkeDamage : public Damage<Value, Time, Constant, Variable> {
     TimeSeries<Constant> f;
     LinearInterpolator<Value> final_f;
 
-    Constant T_abs(Time t) {
-        return climate.T_atm(t).value() - climate.T_atm(0).value() + T_2010;
-    }
-    Constant h(Time t) {
-        return impact1 * T_abs(t) + impact2 * T_abs(t) * T_abs(t);
-    }
-    Constant phi(Time t) {
-        return h(t) - href;
-    }
+    Constant T_abs(Time t) { return climate.T_atm(t).value() - climate.T_atm(0).value() + T_2010; }
+    Constant h(Time t) { return impact1 * T_abs(t) + impact2 * T_abs(t) * T_abs(t); }
+    Constant phi(Time t) { return h(t) - href; }
     Constant K_gross(Time t, Economy<Value, Time, Constant, Variable>& economy, const TimeSeries<Constant>& s_fix) {
         if (t == 0) {
             return economy.K(0).value();
@@ -90,7 +84,7 @@ class BurkeDamage : public Damage<Value, Time, Constant, Variable> {
                 const Global<Constant, Time>& global_p,
                 const Control<Value, Time, Constant, Variable>& control_p,
                 climate::Climate<Value, Time, Constant, Variable>& climate_p)
-        : Damage<Value, Time, Constant, Variable>(global_p, control_p, climate_p), settings(settings_p), f(global_p.timestep_num, 1){};
+        : Damage<Value, Time, Constant, Variable>(global_p, control_p, climate_p), settings(settings_p), f(global_p.timestep_num, 1) {}
 
     Constant phi_diff(Economy<Value, Time, Constant, Variable>& economy, const TimeSeries<Constant>& s_fix) {
         Constant sum = 0;
@@ -130,7 +124,7 @@ class BurkeDamage : public Damage<Value, Time, Constant, Variable> {
         }
     }
 };
-}
-}
+}  // namespace damage
+}  // namespace dice
 
 #endif

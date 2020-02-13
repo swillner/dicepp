@@ -21,9 +21,10 @@
 #define TYPES_H
 
 #include <functional>
+#include <ostream>
 #include <string>
 #include <vector>
-#include <ostream>
+
 #include "settingsnode.h"
 
 namespace dice {
@@ -33,15 +34,16 @@ using TimeSeries = std::vector<Value>;
 
 template<typename Value>
 inline std::ostream& operator<<(std::ostream& os, const TimeSeries<Value> v) {
-    for(size_t i = 0; i < v.size(); ++i) {
+    for (std::size_t i = 0; i < v.size(); ++i) {
         os << i << " : " << v[i] << std::endl;
     }
     return os;
 }
 
-#define OBSERVE_VAR(v)                                                                 \
-    if (!observer.observe(#v, [this](Time t) { return v(t); }, global.timestep_num)) { \
-        return false;                                                                  \
+#define OBSERVE_VAR(v)                                                   \
+    if (!observer.observe(                                               \
+            #v, [this](Time t) { return v(t); }, global.timestep_num)) { \
+        return false;                                                    \
     }
 #define OBSERVE_VARIABLE(v)                 \
     if (!observer.observe(#v, v.value())) { \
@@ -51,6 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const TimeSeries<Value> v) {
 template<typename Value, typename Time, typename Constant = Value>
 class Observer {
   public:
+    virtual ~Observer() = default;
     template<typename Var>
     bool observe(const std::string& name, Var v, Time length) {
         bool want_it;
@@ -72,21 +75,10 @@ class Observer {
             return true;
         }
     }
-    virtual std::tuple<bool, bool, Time> want(const std::string& name) {
-        (void)name;
-        return std::tuple<bool, bool, Time>(false, false, 0);
-    }
+    virtual std::tuple<bool, bool, Time> want(const std::string& /* name */) { return std::tuple<bool, bool, Time>(false, false, 0); }
     virtual bool observe(const std::string& name, TimeSeries<Constant>& v) = 0;
-    virtual bool observe(const std::string& name, const Value& v) {
-        (void)name;
-        (void)v;
-        return true;
-    }
-    virtual bool observe(const std::string& name, const Constant& v) {
-        (void)name;
-        (void)v;
-        return true;
-    }
+    virtual bool observe(const std::string& /* name */, const Value& /* v */) { return true; }
+    virtual bool observe(const std::string& /* name */, const Constant& /* v */) { return true; }
 };
 
 template<typename... Types>
@@ -127,7 +119,7 @@ class Bounded {
     Value val;
     Value lower;
     Value upper;
-    inline void check() {
+    constexpr void check() {
         if (val < lower) {
             val = lower;
         } else if (val > upper) {
@@ -136,20 +128,14 @@ class Bounded {
     }
 
   public:
-    Bounded(const Value& val_p, const Value& lower_p, const Value& upper_p) : val(val_p), lower(lower_p), upper(upper_p) {
-        check();
-    }
-    inline Bounded& operator=(const Value& val_p) {
+    constexpr Bounded(const Value& val_p, const Value& lower_p, const Value& upper_p) : val(val_p), lower(lower_p), upper(upper_p) { check(); }
+    constexpr Bounded& operator=(const Value& val_p) {
         val = val_p;
         check();
         return *this;
     }
-    inline operator Value() {
-        return val;
-    }
-    inline operator Value() const {
-        return val;
-    }
+    constexpr operator Value() { return val; }
+    constexpr operator Value() const { return val; }
 };
 
 template<typename Value>
@@ -157,27 +143,21 @@ class LowerBounded {
   private:
     Value val;
     Value lower;
-    inline void check() {
+    constexpr void check() {
         if (val < lower) {
             val = lower;
         }
     }
 
   public:
-    LowerBounded(const Value& val_p, const Value& lower_p) : val(val_p), lower(lower_p) {
-        check();
-    }
-    inline LowerBounded& operator=(const Value& val_p) {
+    constexpr LowerBounded(const Value& val_p, const Value& lower_p) : val(val_p), lower(lower_p) { check(); }
+    constexpr LowerBounded& operator=(const Value& val_p) {
         val = val_p;
         check();
         return *this;
     }
-    inline operator Value() {
-        return val;
-    }
-    inline operator Value() const {
-        return val;
-    }
+    constexpr operator Value() { return val; }
+    constexpr operator Value() const { return val; }
 };
 
 template<typename Value, typename Time>
@@ -191,16 +171,12 @@ class BackwardLookingTimeSeries {
 
   public:
     const Value initial_value;
-    BackwardLookingTimeSeries(Time size, const Value& initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p){};
-    void set_first_value(const Value& first_value) {
-        series[0] = first_value;
-    }
-    const Value& get_first_value() const {
-        return series[0];
-    }
+    BackwardLookingTimeSeries(Time size, const Value& initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p) {}
+    void set_first_value(const Value& first_value) { series[0] = first_value; }
+    const Value& get_first_value() const { return series[0]; }
 
     template<typename Function>
-    inline const Value& get(Time t, Function func) {
+    const Value& get(Time t, Function func) {
         if (t > largest_valid_t) {
 #ifdef DEBUG
             if (calculating_t > 0 && calculating_t <= t) {
@@ -216,15 +192,11 @@ class BackwardLookingTimeSeries {
         return series[t];
     }
 
-    inline void invalidate_after(Time t) {
-        largest_valid_t = t;
-    }
-    inline void invalidate() {
-        invalidate_after(0);
-    }
-    inline void reset() {
+    void invalidate_after(Time t) { largest_valid_t = t; }
+    void invalidate() { invalidate_after(0); }
+    void reset() {
         invalidate();
-        const Value first_value = series[0];
+        const auto first_value = series[0];
         std::fill(series.begin(), series.end(), initial_value);
         series[0] = first_value;
     }
@@ -241,16 +213,12 @@ class StepwiseBackwardLookingTimeSeries {
 
   public:
     const Value initial_value;
-    StepwiseBackwardLookingTimeSeries(Time size, const Value& initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p){};
-    void set_first_value(const Value& first_value) {
-        series[0] = first_value;
-    }
-    const Value& get_first_value() const {
-        return series[0];
-    }
+    StepwiseBackwardLookingTimeSeries(Time size, const Value& initial_value_p) : series(size, initial_value_p), initial_value(initial_value_p) {}
+    void set_first_value(const Value& first_value) { series[0] = first_value; }
+    const Value& get_first_value() const { return series[0]; }
 
     template<typename Function>
-    inline const Value& get(Time t, Function func) {
+    const Value& get(Time t, Function func) {
 #ifdef DEBUG
         if (calculating_t > 0 && calculating_t <= t && t > largest_valid_t) {
             throw std::runtime_error("equation loop");
@@ -266,15 +234,11 @@ class StepwiseBackwardLookingTimeSeries {
         return series[t];
     }
 
-    inline void invalidate_after(Time t) {
-        largest_valid_t = t;
-    }
-    inline void invalidate() {
-        invalidate_after(0);
-    }
-    inline void reset() {
+    void invalidate_after(Time t) { largest_valid_t = t; }
+    void invalidate() { invalidate_after(0); }
+    void reset() {
         invalidate();
-        const Value first_value = series[0];
+        const auto first_value = series[0];
         std::fill(series.begin(), series.end(), initial_value);
         series[0] = first_value;
     }
@@ -284,14 +248,14 @@ template<typename XValue, typename YValue = XValue>
 class LinearInterpolator {
   public:
     std::vector<std::pair<XValue, YValue>> data;
-    inline YValue operator()(const XValue& x) const {
+    YValue operator()(const XValue& x) const {
         if (data.size() == 0) {
             throw std::out_of_range("no data for linear interpolation");
         }
-        size_t lower = 0;
-        size_t upper = data.size();
-        while (upper - lower > 1) {
-            const size_t i = (upper + lower) / 2;
+        std::size_t lower = 0;
+        std::size_t upper = data.size();
+        while (upper > lower + 1) {
+            const std::size_t i = (upper + lower) / 2;
             if (x < data[i].first) {
                 upper = i;
             } else {
@@ -309,6 +273,6 @@ class LinearInterpolator {
         }
     }
 };
-}
+}  // namespace dice
 
 #endif

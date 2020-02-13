@@ -47,17 +47,17 @@ class Damage {
     Damage(const Global<Constant, Time>& global_p,
            const Control<Value, Time, Constant, Variable>& control_p,
            climate::Climate<Value, Time, Constant, Variable>& climate_p)
-        : global(global_p), climate(climate_p), control(control_p){};
-    virtual ~Damage(){};
+        : global(global_p), climate(climate_p), control(control_p) {}
+    virtual ~Damage() = default;
     virtual bool observe(Observer<Value, Time, Constant>& observer) {
         OBSERVE_VAR(damfrac);
         return true;
     }
-    virtual void initialize(){};
-    virtual void reset(){};
+    virtual void initialize() {}
+    virtual void reset() {}
     virtual Value damfrac(Time t) = 0;  // Damages as fraction of gross output
 };
-}
-}
+}  // namespace damage
+}  // namespace dice
 
 #endif

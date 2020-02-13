@@ -44,8 +44,8 @@ class Global {
 
     const Constant optlrsav = (dK + 0.004) / (dK + 0.004 * elasmu + prstp) * gamma;  // Optimal long-run savings rate used for transversality
 
-    Global(const settings::SettingsNode& settings_p) : settings(settings_p){};
+    explicit Global(const settings::SettingsNode& settings_p) : settings(settings_p) {}
 };
-}
+}  // namespace dice
 
 #endif

@@ -22,8 +22,10 @@
 
 #include <autodiff.h>
 #include <stddef.h>
+
 #include <memory>
 #include <vector>
+
 #include "Climate.h"  // IWYU pragma: keep
 #include "Control.h"
 #include "Damage.h"
@@ -65,7 +67,7 @@ class DICE {
                              bool verbose);
 
   public:
-    DICE(const settings::SettingsNode& settings_p);
+    explicit DICE(const settings::SettingsNode& settings_p);
     inline autodiff::Value<Value> calc_single_utility();
     Emissions<autodiff::Value<Value>, Time, Value, autodiff::Variable<Value>> emissions;
     void reset();
