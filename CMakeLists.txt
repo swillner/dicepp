@@ -1,7 +1,25 @@
-cmake_minimum_required(VERSION 2.8)
+# Copyright (C) 2019 Sven Willner <sven.willner@pik-potsdam.de>
+#
+# This file is part of DICE++.
+#
+# DICE++ is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of
+# the License, or (at your option) any later version.
+#
+# DICE++ is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with DICE++.  If not, see <http://www.gnu.org/licenses/>.
+
+cmake_minimum_required(VERSION 3.8)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 include(cmake/helpers.cmake)
+include(cmake/libraries.cmake)
 
 set_default_build_type(Release)
 
@@ -10,20 +28,33 @@ project(dicepp)
 file(GLOB_RECURSE DICEPP_SOURCES src/*.cpp)
 add_executable(dicepp ${DICEPP_SOURCES})
 
-target_include_directories(dicepp PRIVATE include include/climate include/damage lib/cpp-library)
-target_compile_options(dicepp PRIVATE "-std=c++11")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  target_compile_options(dicepp PUBLIC -fno-math-errno -fno-rtti)
+  add_custom_command(
+    TARGET dicepp
+    POST_BUILD
+    COMMAND ${CMAKE_STRIP} dicepp
+  )
+endif()
 
+target_include_directories(dicepp PRIVATE include include/climate include/damage lib/cpp-library)
+target_compile_features(dicepp PUBLIC cxx_std_14)
+
+add_system_paths()
 set_advanced_cpp_warnings(dicepp)
 set_build_type_specifics(dicepp)
-add_git_version(dicepp
-  FALLBACK_VERSION 1.0.0)
+add_git_version(dicepp WITH_DIFF)
+
+option(DICEPP_WITH_BORG "Borg (Optimizer)" OFF)
+if(DICEPP_WITH_BORG)
+  target_sources(dicepp PUBLIC ${CMAKE_SOURCE_DIR}/lib/borg/borg.c ${CMAKE_SOURCE_DIR}/lib/borg/mt19937ar.c)
+  target_include_directories(dicepp PRIVATE lib/borg)
+  target_compile_definitions(dicepp PRIVATE DICEPP_WITH_BORG)
+endif()
 
 option(DICEPP_WITH_NLOPT "NLopt (Optimizer)" ON)
 if(DICEPP_WITH_NLOPT)
-  find_package(NLOPT REQUIRED)
-  message(STATUS "NLopt include directory: ${NLOPT_INCLUDE_DIR}")
-  message(STATUS "NLopt library: ${NLOPT_LIBRARY}")
-  target_link_libraries(dicepp nlopt)
+  include_nlopt(dicepp ON "v2.6.1")
   target_compile_definitions(dicepp PRIVATE DICEPP_WITH_NLOPT)
 endif()
 
@@ -37,20 +68,13 @@ endif()
 
 option(DICEPP_WITH_NETCDF "NetCDF (Output)" ON)
 if(DICEPP_WITH_NETCDF)
-  find_package(NETCDF REQUIRED)
-  message(STATUS "NetCDF include directory: ${NETCDF_INCLUDE_DIR}")
-  message(STATUS "NetCDF library: ${NETCDF_LIBRARY}")
-  target_link_libraries(dicepp netcdf)
-
-  find_package(NETCDF_CPP4 REQUIRED)
-  message(STATUS "NetCDF_c++4 include directory: ${NETCDF_CPP4_INCLUDE_DIR}")
-  message(STATUS "NetCDF_c++4 library: ${NETCDF_CPP4_LIBRARY}")
-  target_link_libraries(dicepp netcdf_c++4)
-
+  include_netcdf_cxx4(dicepp ON v4.3.0)
   target_compile_definitions(dicepp PRIVATE DICEPP_WITH_NETCDF)
 endif()
 
-include(lib/settingsnode/settingsnode.cmake)
-target_link_libraries(dicepp settingsnode)
 
-add_cpp_tools(dicepp)
+include(lib/settingsnode/settingsnode.cmake)
+include_settingsnode(dicepp)
+include_yaml_cpp(dicepp ON "yaml-cpp-0.6.3")
+
+add_cpp_tools(dicepp STD c++14)
