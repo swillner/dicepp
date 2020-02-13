@@ -52,6 +52,12 @@ if(DICEPP_WITH_BORG)
   target_compile_definitions(dicepp PRIVATE DICEPP_WITH_BORG)
 endif()
 
+option(DICEPP_WITH_MIDACO "Midaco (Optimizer)" OFF)
+if(DICEPP_WITH_MIDACO)
+  target_sources(dicepp PUBLIC ${CMAKE_SOURCE_DIR}/lib/midaco/midaco.c)
+  target_compile_definitions(dicepp PRIVATE DICEPP_WITH_MIDACO)
+endif()
+
 option(DICEPP_WITH_NLOPT "NLopt (Optimizer)" ON)
 if(DICEPP_WITH_NLOPT)
   include_nlopt(dicepp ON "v2.6.1")
