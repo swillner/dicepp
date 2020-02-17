@@ -90,7 +90,7 @@ int midaco_print(int,
 namespace dice {
 
 #ifdef DICEPP_WITH_NLOPT
-static const char* get_optimization_results(const int result_p) {
+static const char* get_nlopt_optimization_results(const int result_p) {
     switch (result_p) {
         case 1:
             return "Generic success";
@@ -117,6 +117,91 @@ static const char* get_optimization_results(const int result_p) {
                    "objective function or constraints.";
         default:
             return "Unknown optimization result";
+    }
+}
+
+static nlopt::algorithm get_nlopt_algorithm(const std::string& name) {
+    switch (settings::hstring::hash(name.c_str())) {
+        case settings::hstring::hash("ln_auglag"):
+            return nlopt::algorithm::LN_AUGLAG;
+        case settings::hstring::hash("ld_auglag"):
+            return nlopt::algorithm::LD_AUGLAG;
+        case settings::hstring::hash("ln_auglag_eq"):
+            return nlopt::algorithm::LN_AUGLAG_EQ;
+        case settings::hstring::hash("ld_auglag_eq"):
+            return nlopt::algorithm::LD_AUGLAG_EQ;
+        case settings::hstring::hash("direct"):
+            return nlopt::algorithm::GN_DIRECT;
+        case settings::hstring::hash("direct_l"):
+            return nlopt::algorithm::GN_DIRECT_L;
+        case settings::hstring::hash("direct_lrand"):
+            return nlopt::algorithm::GN_DIRECT_L_RAND;
+        case settings::hstring::hash("direct_noscal"):
+            return nlopt::algorithm::GN_DIRECT_NOSCAL;
+        case settings::hstring::hash("direct_lnoscal"):
+            return nlopt::algorithm::GN_DIRECT_L_NOSCAL;
+        case settings::hstring::hash("direct_lrand_noscal"):
+            return nlopt::algorithm::GN_DIRECT_L_RAND_NOSCAL;
+        case settings::hstring::hash("orig_direct"):
+            return nlopt::algorithm::GN_ORIG_DIRECT;
+        case settings::hstring::hash("orig_direct_l"):
+            return nlopt::algorithm::GN_ORIG_DIRECT_L;
+        case settings::hstring::hash("stogo"):
+            return nlopt::algorithm::GD_STOGO;
+        case settings::hstring::hash("stogo_rand"):
+            return nlopt::algorithm::GD_STOGO_RAND;
+        case settings::hstring::hash("lbfgs_nocedal"):
+            return nlopt::algorithm::LD_LBFGS_NOCEDAL;
+        case settings::hstring::hash("lbfgs"):
+            return nlopt::algorithm::LD_LBFGS;
+        case settings::hstring::hash("praxis"):
+            return nlopt::algorithm::LN_PRAXIS;
+        case settings::hstring::hash("var1"):
+            return nlopt::algorithm::LD_VAR1;
+        case settings::hstring::hash("var2"):
+            return nlopt::algorithm::LD_VAR2;
+        case settings::hstring::hash("tnewton"):
+            return nlopt::algorithm::LD_TNEWTON;
+        case settings::hstring::hash("tnewton_restart"):
+            return nlopt::algorithm::LD_TNEWTON_RESTART;
+        case settings::hstring::hash("tnewton_precond"):
+            return nlopt::algorithm::LD_TNEWTON_PRECOND;
+        case settings::hstring::hash("tnewton_precond_restart"):
+            return nlopt::algorithm::LD_TNEWTON_PRECOND_RESTART;
+        case settings::hstring::hash("crs2_lm"):
+            return nlopt::algorithm::GN_CRS2_LM;
+        case settings::hstring::hash("gn_mlsl"):
+            return nlopt::algorithm::GN_MLSL;
+        case settings::hstring::hash("mlsl"):
+            return nlopt::algorithm::GD_MLSL;
+        case settings::hstring::hash("gn_mlsl_lds"):
+            return nlopt::algorithm::GN_MLSL_LDS;
+        case settings::hstring::hash("gd_mlsl_lds"):
+            return nlopt::algorithm::GD_MLSL_LDS;
+        case settings::hstring::hash("mma"):
+            return nlopt::algorithm::LD_MMA;
+        case settings::hstring::hash("cobyla"):
+            return nlopt::algorithm::LN_COBYLA;
+        case settings::hstring::hash("newuoa"):
+            return nlopt::algorithm::LN_NEWUOA;
+        case settings::hstring::hash("newuoa_bound"):
+            return nlopt::algorithm::LN_NEWUOA_BOUND;
+        case settings::hstring::hash("neldermead"):
+            return nlopt::algorithm::LN_NELDERMEAD;
+        case settings::hstring::hash("sbplx"):
+            return nlopt::algorithm::LN_SBPLX;
+        case settings::hstring::hash("bobyqa"):
+            return nlopt::algorithm::LN_BOBYQA;
+        case settings::hstring::hash("isres"):
+            return nlopt::algorithm::GN_ISRES;
+        case settings::hstring::hash("slsqp"):
+            return nlopt::algorithm::LD_SLSQP;
+        case settings::hstring::hash("ccsaq"):
+            return nlopt::algorithm::LD_CCSAQ;
+        case settings::hstring::hash("esch"):
+            return nlopt::algorithm::GN_ESCH;
+        default:
+            throw std::runtime_error("unknown algorithm '" + name + "'");
     }
 }
 #endif
@@ -274,7 +359,7 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
                 }
             });
 
-            for (Time t = 0; t < variables_num; ++t) {
+            for (Time t = 0; t < static_cast<Time>(variables_num); ++t) {
                 BORG_Problem_set_bounds(opt, t, 0, 1);
             }
 
@@ -291,87 +376,7 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
         case settings::hstring::hash("nlopt"):
 #ifdef DICEPP_WITH_NLOPT
         {
-            // "auglag nlopt::algorithm::LN_AUGLAG
-            // "auglag nlopt::algorithm::LD_AUGLAG
-            // "auglag_eq nlopt::algorithm::LN_AUGLAG_EQ
-            // "auglag_eq nlopt::algorithm::LD_AUGLAG_EQ
-            const std::string algorithm_name = settings["algorithm"].as<std::string>();
-            nlopt::algorithm algorithm_type;
-            if (algorithm_name == "direct") {
-                algorithm_type = nlopt::algorithm::GN_DIRECT;
-            } else if (algorithm_name == "direct_l") {
-                algorithm_type = nlopt::algorithm::GN_DIRECT_L;
-            } else if (algorithm_name == "direct_lrand") {
-                algorithm_type = nlopt::algorithm::GN_DIRECT_L_RAND;
-            } else if (algorithm_name == "direct_noscal") {
-                algorithm_type = nlopt::algorithm::GN_DIRECT_NOSCAL;
-            } else if (algorithm_name == "direct_lnoscal") {
-                algorithm_type = nlopt::algorithm::GN_DIRECT_L_NOSCAL;
-            } else if (algorithm_name == "direct_lrand_noscal") {
-                algorithm_type = nlopt::algorithm::GN_DIRECT_L_RAND_NOSCAL;
-            } else if (algorithm_name == "orig_direct") {
-                algorithm_type = nlopt::algorithm::GN_ORIG_DIRECT;
-            } else if (algorithm_name == "orig_direct_l") {
-                algorithm_type = nlopt::algorithm::GN_ORIG_DIRECT_L;
-            } else if (algorithm_name == "stogo") {
-                algorithm_type = nlopt::algorithm::GD_STOGO;
-            } else if (algorithm_name == "stogo_rand") {
-                algorithm_type = nlopt::algorithm::GD_STOGO_RAND;
-            } else if (algorithm_name == "lbfgs_nocedal") {
-                algorithm_type = nlopt::algorithm::LD_LBFGS_NOCEDAL;
-            } else if (algorithm_name == "lbfgs") {
-                algorithm_type = nlopt::algorithm::LD_LBFGS;
-            } else if (algorithm_name == "praxis") {
-                algorithm_type = nlopt::algorithm::LN_PRAXIS;
-            } else if (algorithm_name == "var1") {
-                algorithm_type = nlopt::algorithm::LD_VAR1;
-            } else if (algorithm_name == "var2") {
-                algorithm_type = nlopt::algorithm::LD_VAR2;
-            } else if (algorithm_name == "tnewton") {
-                algorithm_type = nlopt::algorithm::LD_TNEWTON;
-            } else if (algorithm_name == "tnewton_restart") {
-                algorithm_type = nlopt::algorithm::LD_TNEWTON_RESTART;
-            } else if (algorithm_name == "tnewton_precond") {
-                algorithm_type = nlopt::algorithm::LD_TNEWTON_PRECOND;
-            } else if (algorithm_name == "tnewton_precond_restart") {
-                algorithm_type = nlopt::algorithm::LD_TNEWTON_PRECOND_RESTART;
-            } else if (algorithm_name == "crs2_lm") {
-                algorithm_type = nlopt::algorithm::GN_CRS2_LM;
-            } else if (algorithm_name == "gn_mlsl") {
-                algorithm_type = nlopt::algorithm::GN_MLSL;
-            } else if (algorithm_name == "mlsl") {
-                algorithm_type = nlopt::algorithm::GD_MLSL;
-            } else if (algorithm_name == "gn_mlsl_lds") {
-                algorithm_type = nlopt::algorithm::GN_MLSL_LDS;
-            } else if (algorithm_name == "gd_mlsl_lds") {
-                algorithm_type = nlopt::algorithm::GD_MLSL_LDS;
-            } else if (algorithm_name == "mma") {
-                algorithm_type = nlopt::algorithm::LD_MMA;
-            } else if (algorithm_name == "cobyla") {
-                algorithm_type = nlopt::algorithm::LN_COBYLA;
-            } else if (algorithm_name == "newuoa") {
-                algorithm_type = nlopt::algorithm::LN_NEWUOA;
-            } else if (algorithm_name == "newuoa_bound") {
-                algorithm_type = nlopt::algorithm::LN_NEWUOA_BOUND;
-            } else if (algorithm_name == "neldermead") {
-                algorithm_type = nlopt::algorithm::LN_NELDERMEAD;
-            } else if (algorithm_name == "sbplx") {
-                algorithm_type = nlopt::algorithm::LN_SBPLX;
-            } else if (algorithm_name == "bobyqa") {
-                algorithm_type = nlopt::algorithm::LN_BOBYQA;
-            } else if (algorithm_name == "isres") {
-                algorithm_type = nlopt::algorithm::GN_ISRES;
-            } else if (algorithm_name == "slsqp") {
-                algorithm_type = nlopt::algorithm::LD_SLSQP;
-            } else if (algorithm_name == "ccsaq") {
-                algorithm_type = nlopt::algorithm::LD_CCSAQ;
-            } else if (algorithm_name == "esch") {
-                algorithm_type = nlopt::algorithm::GN_ESCH;
-            } else {
-                throw std::runtime_error("unknown algorithm '" + algorithm_name + "'");
-            }
-
-            nlopt::opt opt(algorithm_type, variables_num);
+            nlopt::opt opt(get_nlopt_algorithm(settings["algorithm"].as<std::string>()), variables_num);
             if (constraints_num > 0) {  // TODO
                 opt.add_inequality_constraint(
                     [](unsigned /* n */, const double* x, double* grad, void* data) {
@@ -386,29 +391,44 @@ void Optimization<Value, Time>::optimize(const settings::SettingsNode& settings,
                     return optimization->objective(x, grad)[0];  // TODO
                 },
                 this);
-
+            nlopt::opt* local;
+            if (settings.has("local_algorithm")) {
+                local = new nlopt::opt(get_nlopt_algorithm(settings["local_algorithm"].as<std::string>()), variables_num);
+            } else {
+                local = &opt;
+            }
             if (settings.has("utility_precision")) {
-                opt.set_ftol_abs(settings["utility_precision"].as<Value>());
+                local->set_ftol_abs(settings["utility_precision"].as<Value>());
             }
             if (settings.has("rel_obj_precision")) {
-                opt.set_ftol_rel(settings["rel_obj_precision"].as<Value>());
+                local->set_ftol_rel(settings["rel_obj_precision"].as<Value>());
             }
             if (settings.has("rel_var_precision")) {
-                opt.set_xtol_rel(settings["rel_var_precision"].as<Value>());
+                local->set_xtol_rel(settings["rel_var_precision"].as<Value>());
+            }
+            if (settings.has("abs_var_precision")) {
+                local->set_xtol_abs(settings["abs_var_precision"].as<Value>());
             }
             opt.set_lower_bounds(std::vector<Value>(variables_num, 0));
             opt.set_upper_bounds(std::vector<Value>(variables_num, 1));
             if (settings.has("maxiter")) {
                 opt.set_maxeval(settings["maxiter"].as<std::size_t>());
+                local->set_maxeval(settings["maxiter"].as<std::size_t>());
             }
             if (settings.has("timeout")) {  // timeout given in sec
                 opt.set_maxtime(settings["timeout"].as<std::size_t>());
+                local->set_maxtime(settings["timeout"].as<std::size_t>());
             }
-
+            if (settings.has("local_algorithm")) {
+                opt.set_local_optimizer(*local);
+            }
             Value utility;
             nlopt::result result = opt.optimize(initial_values, utility);
             if (verbose) {
-                std::cout << get_optimization_results(result) << std::endl;
+                std::cout << get_nlopt_optimization_results(result) << std::endl;
+            }
+            if (settings.has("local_algorithm")) {
+                delete local;
             }
         } break;
 #else
