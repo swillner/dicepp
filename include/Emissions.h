@@ -45,7 +45,7 @@ class Emissions {
 
     // Total CO2 emissions (GtCO2 per year)
     Value operator()(Time t) {
-        return E_series.get(t, [this](Time t, Value /* E_last */) {
+        return E_series.get(t, [this](Time t, const Value& /* E_last */) {
             Value E{control.variables_num, 0};
             for (auto&& economy : economies) {
                 E += economy.E(t);

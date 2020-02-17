@@ -119,7 +119,7 @@ class Economy {
 
     // Population (millions)
     Constant L(Time t) {
-        return L_series.get(t, [this](Time t, Constant /* L_last */) {
+        return L_series.get(t, [this](Time t, const Constant& /* L_last */) {
             return std::pow(L_series.initial_value, std::pow(1 - pop_adj, global.timestep_length * 0.2 * t)) * pop_asym
                    * std::pow(pop_asym, -std::pow(1 - pop_adj, global.timestep_length * 0.2 * t));
         });
@@ -127,7 +127,7 @@ class Economy {
 
     // Level of total factor productivity
     Constant A(Time t) {
-        return A_series.get(t, [this](Time t, Constant A_last) {
+        return A_series.get(t, [this](Time t, const Constant& A_last) {
             const Constant gA_t_m1 = gA0 * std::exp(-dA * global.timestep_length * (t - 1));
             return A_last / (1 - gA_t_m1);
         });

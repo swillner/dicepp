@@ -82,23 +82,23 @@ class DICEClimate : public Climate<Value, Time, Constant, Variable> {
 
     // Concentration in atmosphere 2010 (GtC)
     Value M_atm(Time t) {
-        return M_atm_series.get(t,
-                                [this](Time t, Value M_atm_last) { return M_atm_last * b11 + M_u(t - 1) * b21 + E(t - 1) * global.timestep_length / 3.666; });
+        return M_atm_series.get(
+            t, [this](Time t, const Value& M_atm_last) { return M_atm_last * b11 + M_u(t - 1) * b21 + E(t - 1) * global.timestep_length / 3.666; });
     }
 
     // Carbon concentration increase in lower oceans (GtC from 1750)
     Value M_l(Time t) {
-        return M_l_series.get(t, [this](Time t, Value M_l_last) { return M_l_last * b33 + M_u(t - 1) * b23; });
+        return M_l_series.get(t, [this](Time t, const Value& M_l_last) { return M_l_last * b33 + M_u(t - 1) * b23; });
     }
 
     // Carbon concentration increase in shallow oceans (GtC from 1750)
     Value M_u(Time t) {
-        return M_u_series.get(t, [this](Time t, Value M_u_last) { return M_atm(t - 1) * b12 + M_u_last * b22 + M_l(t - 1) * b32; });
+        return M_u_series.get(t, [this](Time t, const Value& M_u_last) { return M_atm(t - 1) * b12 + M_u_last * b22 + M_l(t - 1) * b32; });
     }
 
     // Increase in temperature of lower oceans (degrees C from 1900)
     Value T_ocean(Time t) {
-        return T_ocean_series.get(t, [this](Time t, Value T_ocean_last) { return T_ocean_last + c4 * (T_atm(t - 1) - T_ocean_last); });
+        return T_ocean_series.get(t, [this](Time t, const Value& T_ocean_last) { return T_ocean_last + c4 * (T_atm(t - 1) - T_ocean_last); });
     }
 
     // Exogenous forcing for other greenhouse gases
@@ -118,7 +118,7 @@ class DICEClimate : public Climate<Value, Time, Constant, Variable> {
 
     // Increase temperature of atmosphere (degrees C from 1900)
     Value T_atm(Time t) override {
-        return T_atm_series.get(t, [this](Time t, Value T_atm_last) {
+        return T_atm_series.get(t, [this](Time t, const Value& T_atm_last) {
             return std::min(T_atm_upper, T_atm_last + c1 * (force(t) - (fco22x / t2xco2) * T_atm_last - c3 * (T_atm_last - T_ocean(t - 1))));
         });
     }
